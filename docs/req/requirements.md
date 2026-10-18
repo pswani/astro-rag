@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | Baseline (rev 2, merged) |
-| **Date** | 2026-10-17 |
+| **Status** | Baseline (rev 3, input scope revised) |
+| **Date** | 2026-10-18 |
 | **Supersedes** | `rag-cl.md` and `rag-gpt.md` (both removed; see git history) |
 | **Review log** | [review.md](review.md): conflicts resolved, rabbit holes removed, ID mapping |
 | **Extensions** | [memory.md](memory.md): what the application remembers (refines AGT-5, AGT-6, QRY-6, NFR-2, NFR-6) |
 | **Memory** | [memory.md](memory.md): memory stores, use cases and MEM-* requirements (refines AGT-5, QRY-6, NFR-6) |
-| **Design** | [design.md](../design/design.md) (rev 4, merged; traces every requirement in §21) |
+| **Design** | [design.md](../design/design.md) (rev 5; traces every requirement in §22) |
 
 This document says **what** the system must do and **how acceptance is shown**. The design says **how** it is built. Frameworks, database products, model names, chunk sizes and retrieval counts are design decisions, not requirements. Every requirement has a stable ID that design sections, rule cards, tests and evaluation cases can refer to.
 
@@ -67,15 +67,14 @@ It also answers concept, source-comparison and story questions without a persona
 
 - **Local, single-operator deployment.** One operator runs the system on their own machine and may store charts for several people (self, family, clients). Multi-tenant accounts, per-user authorization and hosted service operation are out of scope for v1.
 - **Interface:** a programmatic API (and CLI) that returns the evidence bundle and, optionally, a generated answer. An end-user UI is out of scope for this document.
-- **Birth dates:** Gregorian civil dates from **1900-01-01 to 2100-12-31**. Dates outside this range are rejected as unsupported.
-- **Places:** any latitude/longitude; the gazetteer is India-first. Above the polar circles, house systems that are undefined there (e.g., Placidus) return `unsupported`; whole-sign houses still work.
+- **Birth dates:** no fixed product-level year range. Preserve the entered date and calendar; Gregorian is the default when no calendar is specified. Use supported calendar converters or a user-supplied verified conversion. Calculation availability depends on the selected engine, installed data and requested feature, not an arbitrary date cutoff. An unavailable conversion or uncertain historical time is handled as missing/uncertain input; unsupported calculation features are reported individually without blocking unrelated knowledge retrieval.
+- **Places:** worldwide place names or valid latitude/longitude, with no country preference or geographic exclusion. Accept coordinates and an explicit time-zone identifier or documented time standard when place lookup is unavailable. Only ambiguous or insufficient inputs require clarification. A selected calculation that is undefined for an input returns an explicit feature-level status; other supported features and knowledge retrieval remain available.
 
 ### 2.3 Out of scope
 
 - Palm-leaf (Nadi leaf) consultation, other Nadi texts (Deva Keralam, Chandra Kala Nadi, …), numerology, palmistry, vastu.
 - Fixed-star (individual star) astrology. Nakshatras are handled as 13°20′ sectors only.
 - Birth-time rectification. The system never silently changes a birth time.
-- Birth dates entered in non-Gregorian calendars (Vikram Samvat, Shaka, regional calendars) as input.
 - Claims of empirical predictive validity.
 - Selling remedies, gemstones or services.
 
@@ -118,8 +117,8 @@ It also answers concept, source-comparison and story questions without a persona
 
 | ID | Requirement | Pri | Ph | Acceptance |
 |---|---|---|---|---|
-| INP-1 | Accept birth date, local clock time and birth place (name or coordinates). Resolve a place name to latitude/longitude with a gazetteer and record the resolved location ID. When the name is ambiguous, ask. | M | 1 | Ambiguous place fixture prompts rather than guessing. |
-| INP-2 | Resolve the historical time-zone offset and DST from the IANA tz database for the birth date. Never apply today's offset. When the local time is ambiguous (DST fold) or does not exist (DST gap), ask. | M | 1 | Fold and gap fixtures do not silently produce a chart. |
+| INP-1 | Accept birth date with its calendar (Gregorian by default), local clock time and worldwide birth place (name or coordinates), without fixed year or country restrictions. Resolve place names with a gazetteer; preserve supplied coordinates when lookup is unavailable and record provenance, with a location ID when available. Record any calendar conversion and its provenance; use a configured converter or request a verified converted date rather than inventing a conversion. Ask when inputs are ambiguous or insufficient. | M | 1 | Worldwide and pre-1900/post-2100 fixtures reach capability checks without a product-level rejection; ambiguous place prompts; coordinates bypass lookup; calendar-conversion provenance is retained. |
+| INP-2 | Resolve the time-zone offset and DST for the entered date using a pinned IANA database or an explicit, documented historical time standard. Never apply today's offset. Use case-by-case ambiguity handling, with no country-wide historical-year prompt. Record the resolved instant, source and assumptions; clarify a DST fold/gap or a material unresolved historical ambiguity and mark dependent facts unknown when it cannot be resolved. | M | 1 | Fold/gap fixtures do not silently produce a chart; an older birth with an established time standard proceeds without an age-based prompt; unresolved assumptions remain visible. |
 | INP-3 | Record birth-time precision and provenance (certificate, family memory, rounded, unknown) and an uncertainty interval. A fully unknown time is allowed: Lagna-dependent facts become `unknown` and Moon-based analysis proceeds. | M | 1 | Unknown-time fixture yields a Chandra-lagna reading with Lagna facts marked `unknown`. |
 | INP-4 | Accept question text, an explicit or default as-of date, the user's time zone, an optional time window and an optional current location (for transits, muhurta and prashna). | M | 1 | — |
 | INP-5 | Accept the selected method(s). When none is given, use the configured default (Parashari) and say so in the answer. | M | 1 | Answer states the default used. |
@@ -325,7 +324,7 @@ It also answers concept, source-comparison and story questions without a persona
 
 | ID | Requirement | Pri | Ph |
 |---|---|---|---|
-| EVAL-1 | **Calculation fixtures:** positions, Lagna, nakshatra/pada, panchanga boundaries, vargas, dasha balance and sub-periods, transit events. Edge cases: 0°/360° wrap, sector boundaries, DST folds and gaps, historical Indian time zones, high latitudes, retrograde re-crossings, unknown birth time. | M | 1 |
+| EVAL-1 | **Calculation fixtures:** positions, Lagna, nakshatra/pada, panchanga boundaries, vargas, dasha balance and sub-periods, transit events. Edge cases: 0°/360° wrap, sector boundaries, DST folds and gaps, documented historical time standards, dates outside the former product range, worldwide coordinate input, calendar conversions, feature-specific engine/data limits, high latitudes, retrograde re-crossings, unknown birth time. | M | 1 |
 | EVAL-2 | **Golden question set**, built with an astrologer: 50–200 questions across the Core use cases, covering aliases, conflicts, missing inputs and ambiguous terms. | M | 2 |
 | EVAL-3 | **Retrieval metrics:** recall@k for required rule families and for exceptions/contrary passages, MRR, nDCG, and cross-method contamination rate. | M | 2 |
 | EVAL-4 | **Applicability tests:** positive, negative and `unknown` cases for every rule card, including cancellations. | M | 3 |

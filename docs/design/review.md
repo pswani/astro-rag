@@ -4,7 +4,7 @@
 |---|---|
 | **Date** | 2026-10-17 |
 | **Inputs** | `rag-claude.md` (rev 3) and `rag-gpt.md`. Both are removed from the tree and remain in git history at `e1212a1`. |
-| **Output** | [design.md](design.md) (rev 4, merged), checked against [requirements.md](../req/requirements.md) |
+| **Output** | [design.md](design.md) (current rev 5; original merged baseline rev 4), checked against [requirements.md](../req/requirements.md) |
 
 ## 1. Assessment of the inputs
 
@@ -66,7 +66,7 @@ Found while merging, and in three review passes over the merged draft.
 | F14 | Concept route latency (agent loop + planner) exceeded the 8 s p95 target | Deterministic first pass (§4.2, §15.4) |
 | F15 | Fact cache described as keyed on the knowledge release | Facts don't depend on sources; bundles carry the release (§5.4) |
 | F16 | No behaviour for polar day/night sunrise, villages missing from the gazetteer, or a minute-precision default | §7.4, §6.2, §6.3 |
-| F17 | Historical Indian time standards (Bombay and Calcutta time) not handled; IANA does not model them | Ask and record `tz_assumption` for births before 1956 (§6.2) |
+| F17 | Historical Indian time standards (Bombay and Calcutta time) not handled; IANA does not model them | Original pre-1956 prompt superseded on 2026-10-18: resolve documented/library time standards and clarify only specific uncertainty (§6.2). |
 | F18 | TRN-1 (transit positions at the as-of date) had no design element | §7.8 |
 | F19 | Rule-card review effort was never estimated (~1,100–1,400 cards, 90–120 reviewer-hours) | Topic-ordered review; `partial` instead of drafts (§10.7); requirement KNW-5 phases aligned to 3–6 |
 | F20 | API VLM fallback could send licensed scans off-machine | Only when the register entry permits external processing (§9.3) |
@@ -116,3 +116,7 @@ Interpretations worth a reviewer's eye:
 - **OUT-1** ("cite a chart fact and a passage"): applied to chart claims; concept and story answers cite sources only (§14.4).
 
 One requirement was changed as a result of design review: **KNW-5** now spans phases 3–6, with topic-ordered review (F19).
+
+## Input-scope revision — 2026-10-18
+
+At the user's request, removed the fixed birth-year range, country preference in place lookup, blanket historical-year prompt, and categorical non-Gregorian input exclusion. Accept worldwide names/coordinates and original calendar labels; use maintained conversion libraries or documented converted inputs. Do not build bespoke geographic, historical-time or calendar research systems as a prerequisite. Keep invalid-input checks, explicit assumptions, and actual per-feature engine/data/domain limits. Unsupported calculations do not block unrelated knowledge retrieval. No changes to the selected astrological methods or their release phases.

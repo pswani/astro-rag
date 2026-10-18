@@ -4,7 +4,7 @@
 |---|---|
 | **Date** | 2026-10-17 |
 | **Inputs** | `rag-cl.md` (rev 1) and `rag-gpt.md` (proposed baseline). Both are removed from the tree; they remain in git history at `e1212a1`. |
-| **Output** | [requirements.md](requirements.md) (rev 2, merged baseline) |
+| **Output** | [requirements.md](requirements.md) (current rev 3; original merged baseline rev 2) |
 
 ## 1. Approach
 
@@ -45,7 +45,7 @@ The two documents described the same product but disagreed on scope, format and 
 | R4 | **Arcsecond parity** with Jagannatha Hora | rag-cl NFR-1 | Chasing ΔT, nutation and ayanamsa implementation differences in a closed-source reference. | Tolerances that are tight enough for every discrete fact (C5). |
 | R5 | **Multi-tenant security**: authorization leaks, mid-request revocation, backup tombstone re-application, concurrent publication and rollback | rag-gpt SEC-001…004, OPS-002, EVAL-004 | A hosted-SaaS hardening programme inside a local research tool. | Out of scope for v1 (§2.2). Reconsider if the product becomes hosted. |
 | R6 | **Fixed stars** (catalog IDs, epoch, proper motion) | rag-gpt §5 inventory | A separate astronomical subsystem little used in the Core methods. | Out of scope (§2.3). |
-| R7 | **Non-Gregorian birth-date input** ("original calendar") and unbounded date ranges | rag-gpt INP-002, EVAL-002 | Calendar conversion and pre-1900 Indian time zones are research problems in themselves. | Gregorian 1900–2100 only (§2.2). |
+| R7 | **Non-Gregorian birth-date input** ("original calendar") and unbounded date ranges | rag-gpt INP-002, EVAL-002 | Calendar conversion and pre-1900 Indian time zones are research problems in themselves. | Original decision: Gregorian 1900–2100 only. **Superseded on 2026-10-18:** no fixed year/country restriction; library-backed or verified calendar conversion and feature-specific capability checks (§2.2, INP-1/2). |
 | R8 | **"All yogas"** and LLM rule extraction across every listed text | rag-cl KNW-5, rag-gpt §7 | Hundreds of yogas × variants × expert review = a review backlog that never ends. | Curated 20–30 yogas (KNW-5); a named Core source set (ING-8); everything else enters with a phase-7 bundle. |
 | R9 | **Deferred "acceptance profile"** whose unset targets block release | rag-gpt OPS-005, EVAL-004, §9 | No phase can ever exit; quality targets are argued at the end. | Targets set at the start of each phase (§7 phase exit). |
 | R10 | **Broad acquisition list** (Saravali, Phaladeepika, Samhitas, other Nadis, Lal Kitab editions, course notes, …) | rag-gpt §7 | Turns source acquisition into the project. | Core source set only (ING-8); other families wait for their bundle. The candidate list is in git history. |
@@ -80,7 +80,7 @@ Unchanged unless listed. UC numbers changed: UC-7 → UC-9, UC-8 → UC-10, UC-9
 | rag-gpt | Merged |
 |---|---|
 | INP-001 | INP-4, QRY-5 |
-| INP-002 | INP-1, INP-2, INP-3 (original calendar dropped, R7) |
+| INP-002 | INP-1, INP-2, INP-3 (original-calendar exclusion superseded on 2026-10-18; see R7 and current INP-1) |
 | INP-003, INP-004 | INP-7 (images Optional, R1) |
 | INP-005 | INP-9, QRY-3 |
 | INP-006 | QRY-6, AGT-5 |
@@ -146,3 +146,7 @@ Unchanged unless listed. UC numbers changed: UC-7 → UC-9, UC-8 → UC-10, UC-9
 Resolved by the merged design ([design.md](../design/design.md), log in [design/review.md](../design/review.md)): licence filtering and PII redaction moved to phases 1–2; modern Indian in phase 6; stack, workflow shape and high-latitude behaviour live in the design; the two designs are merged into one that cites these IDs and traces all of them (design §22).
 
 Design review changed one requirement: **KNW-5** spans phases 3–6, with rule-card review ordered by topic (design §10.7).
+
+## Input-scope revision — 2026-10-18
+
+At the user's request, removed the fixed birth-year range, country preference in place lookup, blanket historical-year prompt, and categorical non-Gregorian input exclusion. Accept worldwide names/coordinates and original calendar labels; use maintained conversion libraries or documented converted inputs. Do not build bespoke geographic, historical-time or calendar research systems as a prerequisite. Keep invalid-input checks, explicit assumptions, and actual per-feature engine/data/domain limits. Unsupported calculations do not block unrelated knowledge retrieval. No changes to the selected astrological methods or their release phases.

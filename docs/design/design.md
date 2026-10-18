@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Status** | Baseline (rev 4, merged) |
-| **Date** | 2026-10-17 |
+| **Status** | Baseline (rev 5, input scope revised) |
+| **Date** | 2026-10-18 |
 | **Requirements** | [requirements.md](../req/requirements.md) and [memory.md](../req/memory.md). Requirement IDs (e.g. `DAS-2`, `MEM-SES-2`) are cited inline; §22 traces every one. |
 | **Supersedes** | `rag-claude.md` (rev 3) and `rag-gpt.md` (both removed; see git history) |
 | **Review log** | [review.md](review.md): conflicts resolved, defects fixed, rabbit holes removed |
@@ -212,12 +212,15 @@ In answers, facts and passages are cited by short bundle-local handles (`F7`, `P
 # EvidenceRequest (library/CLI input)
 person_id: p_001                     # existing person, or a new birth record below
 birth:                               # stored encrypted; never sent to an API (NFR-6)
-  date: 1985-03-14                   # Gregorian, 1900-01-01..2100-12-31, else out_of_range
+  date: 1985-03-14                   # no fixed product-level year range
+  calendar: gregorian               # preserve original calendar; conversion provenance recorded
   local_time: "06:42"                # omitted => time unknown
   time_precision: minute             # minute | rounded_5 | rounded_15 | hour | unknown
   time_source: certificate           # certificate | family | rounded | rectified | unknown
   uncertainty_minutes: 5
-  place: "Pune, India"               # or {lat, lon}
+  place: "Pune, India"               # any country, or {lat, lon}
+  timezone: null                    # IANA identifier when supplied; otherwise resolve from place
+  time_standard: null               # optional documented historical standard or UTC offset
 method_inputs: {native_gender: male} # optional; only when a method needs it (INP-8)
 query:
   text: "Is a job change likely in the next 12 months?"
@@ -233,13 +236,15 @@ Validation errors are returned as `needs_input` or `unsupported` with reason cod
 
 ### 6.2 Place and time-zone resolution (`INP-1`, `INP-2`)
 
-1. **Gazetteer:** an offline GeoNames `cities1000` dump, ranked India-first, then by population. If the top candidates share the name but lie more than 25 km apart, the request returns `needs_input` with the candidates. If nothing matches (small villages are missing from `cities1000`), it asks for the nearest town or coordinates. The chosen `geonames_id`, coordinates and IANA zone are recorded.
-2. **Historical offset:** `zoneinfo` with a pinned `tzdata` version. The checks run in this order:
-   - **Gap:** convert the local time to UTC and back. If it does not round-trip, the time does not exist (DST gap): return `needs_input` (`invalid_local_time`).
-   - **Fold:** otherwise convert with `fold=0` and `fold=1`. If the UTC instants differ, the time occurred twice: return `needs_input` with both candidates.
-   - Otherwise proceed with the single instant.
-3. **Indian historical time:** IANA `Asia/Kolkata` models IST (from 1906) and the 1941–45 war-time offsets (UTC+6:30), but not the regional standards of the period: Bombay Time (UTC+4:51) was used in western India until 1955, and Calcutta Time (UTC+5:53:20) until 1948. For births in India before **1956-01-01**, the normalizer asks which standard the recorded time used (IST, Bombay, Calcutta or local mean time), unless the request supplies it. It then records `tz_assumption`.
-4. The normalized input is immutable. Changing place or time creates a new normalized input and a new `chart` ID, which invalidates all dependent cache entries.
+1. **Date and calendar:** preserve the entered date/calendar and normalize with a configured conversion library where needed. Record converter/version and original-to-normalized values. If no converter supports the input, request a verified converted date and retain its provenance; do not silently reinterpret a regional date as Gregorian. Do not implement a historical-calendar research subsystem for v1.
+2. **Place resolution:** use the offline GeoNames dump for worldwide lookup with no country preference. Rank using the supplied country/region and match quality; population may break ties but cannot establish identity. Ask when multiple plausible places remain. Accept valid coordinates directly, including places missing from the dump. Record coordinates, provenance and a GeoNames ID when available. Do not silently substitute the nearest town for the actual birthplace. Resolve a time-zone identifier from supported location data or request it explicitly when lookup is unavailable.
+3. **Date-specific offset:** use `zoneinfo` with pinned `tzdata`, or a documented user-supplied historical time standard/offset. For IANA local-time conversion, check in this order:
+   - **Gap:** convert local time to UTC and back. If it does not round-trip, return `needs_input` (`invalid_local_time`).
+   - **Fold:** otherwise compare `fold=0` and `fold=1`. If they identify different instants, return `needs_input` with both candidates.
+   - Otherwise proceed with the single instant and record the source and assumption.
+4. **Historical uncertainty:** no blanket country/date cutoff triggers a prompt. Use the supplied time standard and available library data. Ask only when there is a specific unresolved ambiguity that affects required calculations, or when necessary conversion data is unavailable. Label database-derived historical offsets as assumptions when appropriate; do not imply that a database entry proves the recorded clock standard. Preserve unresolved uncertainty in dependent facts and continue independent retrieval. Bespoke reconstruction of historical civil time is not a release prerequisite.
+5. **Feature capability:** dates are not rejected by a hardcoded product range. Check each requested calculation against the engine's supported epoch, installed data and mathematical domain. Report `out_of_range` with the actual capability/data limit or `unsupported_feature` with the failing feature. Keep supported results and knowledge retrieval available; never substitute another calculation convention silently. Accepting input does not promise that every calculation works for every epoch and coordinate.
+6. The normalized input is immutable. Changing the calendar conversion, time standard, place or time creates a new normalized input and a new chart ID, invalidating dependent cache entries.
 
 ### 6.3 Precision and unknown birth time (`INP-3`)
 
@@ -870,9 +875,10 @@ A unit is added whole or not at all. If a required unit does not fit, the affect
 
 ### 12.9 Failure handling and reason codes (`RET-12`, `NFR-10`)
 
-Reason codes: `missing_input`, `invalid_local_time`, `out_of_range`, `unsupported_profile`, `unsupported_method`, `unsupported_window`, `no_reviewed_rules`, `no_matching_passages`, `rights_restricted`, `sensitive_birth_time`, `dependency_cycle`, `depth_exceeded`, `budget_exhausted`, `tool_error`.
+Reason codes: `missing_input`, `invalid_local_time`, `out_of_range`, `unsupported_feature`, `unsupported_calendar`, `unsupported_profile`, `unsupported_method`, `unsupported_window`, `no_reviewed_rules`, `no_matching_passages`, `rights_restricted`, `sensitive_birth_time`, `dependency_cycle`, `depth_exceeded`, `budget_exhausted`, `tool_error`.
 
 - Empty retrieval (`no_matching_passages`) is distinct from a failed lookup (`tool_error`).
+- `out_of_range` identifies an actual engine/data limit, never a fixed product-year policy. `unsupported_feature` identifies an unavailable calculation for the requested input. `unsupported_calendar` requests a supported or verified conversion. Preserve independent results and report affected dependencies as gaps.
 - A failed calculation never falls back to LLM output, a different house system or a default dasha variant.
 - In a multi-method run, one method's failure leaves the others' evidence intact.
 - Tool errors get at most 2 retries with backoff.
@@ -1261,7 +1267,11 @@ Each layer has its own runner and report, so a failure is attributable to one la
 | Source withdrawal | Withdrawn passages absent from new runs; dependent cards fail CI |
 | Prompt-injection passage | No tool, filter, person or output change |
 | Unknown birth time | Moon-based reading; Lagna facts `unknown` |
-| Pre-1956 Pune birth | `needs_input` for the time standard unless supplied |
+| Historical birth with documented time standard | Proceeds without a country/year-based prompt; provenance recorded |
+| Unresolved historical clock standard | Clarify only the affected input; dependent facts unknown, independent retrieval available |
+| Dates outside the former product range | No hardcoded date rejection; actual engine/data limits checked per feature |
+| Worldwide birthplace absent from gazetteer | Coordinates plus time-zone/standard accepted, no nearest-town substitution |
+| Non-Gregorian birth date | Configured conversion or verified converted input with provenance; missing converter requests input |
 | Memory: MUC-1…MUC-11 | One scenario per memory use case (save and reuse, follow-up, switch native/method, clarification resume, correction, recall, what changed, preference, past-event timing, flag, inspect/delete) |
 
 ### 19.4 Cadence and gates
@@ -1274,7 +1284,7 @@ Each layer has its own runner and report, so a failure is attributable to one la
 
 | Phase | Work | Exit |
 |---|---|---|
-| **1. Foundations** | Request model, normalizer (gazetteer, tz incl. pre-1956 India, precision), encrypted store with deletion and log redaction, calc profiles, positions/condition/houses/REL-1, D1/D9/D10, birth panchanga, Vimshottari MD/AD/PD, ontology core with confusables, source register, fact model, CI skeleton | EVAL-1 calc fixtures pass at NFR-1 tolerances; ontology reviewed; deletion and redaction tests pass |
+| **1. Foundations** | Request model, normalizer (worldwide lookup/coordinates, calendar adapters, date-specific tz and documented historical standards, precision), encrypted store with deletion and log redaction, calc profiles, positions/condition/houses/REL-1, D1/D9/D10, birth panchanga, Vimshottari MD/AD/PD, ontology core with confusables, source register, fact model, CI skeleton | EVAL-1 calc fixtures pass at NFR-1 tolerances; ontology reviewed; deletion and redaction tests pass |
 | **2. First corpus** | BPHS edition: parse, OCR gate, verse chunking, locators, alignment, tagging, canonical text, Qdrant release, licence filters; concept route (open agent); planner (intent); bundle + integrity; answers with citations; injection defence | Concept and alias evals at target; EVAL-2/3/5 baselines recorded |
 | **3. Parashari rules and reading** | DSL + evaluator + decisions; extraction and review workflow; cards for career/marriage/education; topic maps (11); dependency plan and closure; CALC-4, REL-2/3, CALC-7 sensitivity; rule-linked, factor and contrary retrieval; coverage, budgets and context assembly; chart workflow, analyst, checker, synthesizer; memory core: person registry with versions and confirmation, session slots and carry-forward, `needs_input` suspension, reading records, preferences, flags, inspection and deletion (§17) | EVAL-4 pass; EVAL-6 rubric at target; scenarios for career, uncertain time, budget, failure, draft rule |
 | **4. Timing** | `periods_in`, sandhi, period-lord context; event solver, named states, eclipses, Ashtakavarga and Shadbala, vedha/kakshya; remaining vargas; lunar calendar; dasha and transit cards; timing retrieval and layers; `recall`, `what_changed`, native notes (§17.5, §17.6) | EVAL-7 at target |
@@ -1314,7 +1324,7 @@ Every requirement ID in [requirements.md](../req/requirements.md) maps to the de
 | UC-3 | §10.5, §7.7, §7.8 | EVAL-7 |
 | UC-8 | §11.6 | follow-up scenario |
 | UC-9 … UC-13 | §7.10, §11.1 (phase 7 adapters) | adapter evals |
-| INP-1, INP-2 | §6.2 | EVAL-1 tz/place fixtures; pre-1956 scenario |
+| INP-1, INP-2 | §6.2 | EVAL-1 worldwide place/calendar/tz and feature-capability fixtures |
 | INP-3 | §6.3, §7.9 | unknown-time scenario |
 | INP-4, INP-5 | §6.1 | request validation tests |
 | INP-6 | §6.5 | consent test (phase 7) |
@@ -1435,7 +1445,7 @@ At 1024-d float32 plus sparse vectors and payload, that is about 150 MB. Even a 
 | OCR quality of Devanagari scans | Bad passages, wrong verses | Quality gate; VLM fallback; prefer editions with text layers |
 | Local model quality in `local` mode | Weaker analysis and citations | Role-specific models; checker drops unsupported claims; measured, not assumed |
 | Edition licensing | Cannot index a preferred translation | Register-first; private vs distributable builds |
-| Historical Indian time standards | Wrong Lagna for pre-1956 births | Ask and record `tz_assumption` (§6.2) |
+| Historical clock-standard uncertainty | Incorrect normalized instant and dependent facts | Library-backed resolution or documented input; record `tz_assumption`; clarify specific ambiguity (§6.2) |
 | Disputed rules between texts | Confusing answers | Attribution, `contradicts`, per-source decisions; never vote |
 | LangGraph's SQLite checkpointer may not accept a SQLCipher connection | Session state unencrypted | Verify in phase 1; otherwise a small custom `BaseCheckpointSaver` over the encrypted store |
 
