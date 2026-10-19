@@ -267,7 +267,17 @@ class YamlReferenceData:
         return "graha:" + g if g else None
 
 
+def _stamp(directory: Path) -> tuple[tuple[str, int], ...]:
+    return tuple(sorted((p.name, p.stat().st_mtime_ns) for p in Path(directory).glob("*.yaml")))
+
+
 @cache
+def _load_refdata(directory: Path, stamp: tuple) -> YamlReferenceData:
+    return YamlReferenceData(directory)
+
+
 def load_refdata(directory: Path) -> YamlReferenceData:
-    """The ontology for `directory`, loaded and integrity-checked once per process."""
-    return YamlReferenceData(Path(directory))
+    """The ontology for `directory`, loaded and integrity-checked once per version of its
+    files (an edited file is reloaded)."""
+    d = Path(directory).resolve()
+    return _load_refdata(d, _stamp(d))

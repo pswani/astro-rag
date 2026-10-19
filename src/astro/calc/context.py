@@ -37,6 +37,8 @@ class ChartContext:
     ephemeris: Ephemeris
     refdata: ReferenceData
     method_inputs: dict[str, Any] = field(default_factory=dict)
+    # per-chart scratch space for values shared by features (e.g. sign-change instants)
+    memo: dict[Any, Any] = field(default_factory=dict, repr=False, compare=False)
 
     # -- callables for the solver -----------------------------------------------------------
     def lon_fn(self, body: Body) -> Callable[[float], float]:

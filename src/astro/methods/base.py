@@ -112,6 +112,13 @@ class MethodRegistry:
 
 
 @cache
+def _load_registry(profile_dir: Path, stamp: tuple) -> MethodRegistry:
+    return MethodRegistry(profile_dir)
+
+
 def load_registry(profile_dir: Path) -> MethodRegistry:
-    """Method profiles and adapters for `profile_dir`, discovered once per process."""
-    return MethodRegistry(Path(profile_dir))
+    """Method profiles and adapters, discovered once per version of the profile files.
+    Plugins installed while the process runs need `_load_registry.cache_clear()`."""
+    d = Path(profile_dir).resolve()
+    stamp = tuple(sorted((p.name, p.stat().st_mtime_ns) for p in d.glob("*.yaml")))
+    return _load_registry(d, stamp)

@@ -20,17 +20,23 @@ from __future__ import annotations
 from typing import Any
 
 from astro.calc.context import ChartContext
-from astro.calc.core.angles import deg_in_sign, norm360, sign_index, signed_diff
+from astro.calc.core.angles import deg_in_sign, houses_apart, norm360, sign_index, signed_diff
 from astro.calc.core.status import Status
 from astro.calc.engine import Deps, FeatureRequest
 from astro.calc.ephemeris.port import BODIES
 from astro.calc.features.common import (
-    assess_angle,
+    angle_changes,
     assess_boundaries,
-    assessment_of,
+    latitude_crossings,
+    lon_fn,
+    piecewise,
     points,
+    sign_changes,
+    station_times,
     subject,
+    target_changes,
 )
+from astro.calc.features.friendship import COMPOUND, TEMPORAL_FRIEND_HOUSES
 from astro.calc.model import ChartFact, FeatureResult, Relation
 from astro.calc.profile import COMBUSTIBLE
 from astro.calc.refdata import GRAHAS_7
@@ -72,75 +78,116 @@ class Condition:
     id = "condition"
 
     def requires(self, params: dict[str, Any]) -> list[FeatureRequest]:
-        return [FeatureRequest.of("positions"), FeatureRequest.of("friendship")]
+        # friendship grades come from the same tables as the friendship feature, evaluated at
+        # each instant the dignity's sensitivity needs
+        return [FeatureRequest.of("positions")]
 
     def compute(self, ctx: ChartContext, deps: Deps, params: dict[str, Any]) -> FeatureResult:
-        pos, fr = deps.get_one("positions"), deps.get_one("friendship")
+        pos = deps.get_one("positions")
         prof = ctx.profile
         facts: list[ChartFact] = []
         rels: list[Relation] = []
         basis = prof.dignity.friendship_basis
-        friendship = {(r.source, r.target): r for r in fr.relations if r.system == basis}
         lon = {subject(p): pos.fact("longitude", subject(p)).value for p in points(ctx)}
-        sign_a = {subject(p): assessment_of(pos.fact("sign", subject(p))) for p in points(ctx)}
 
-        # dignity
+        t0 = ctx.birth.jd_ut
+        lon_at = lambda x, t: lon_fn(ctx, x)(t)  # noqa: E731
+        sign_changes_all = [c for x in BODIES for c in sign_changes(ctx, x)]
+
+        # dignity: depends on the graha's degree and, on the compound basis, on where its sign
+        # lord stands; exact sensitivity over every change of those inputs (CALC-7)
+        def dignity_at(g: str, t: float) -> str | None:
+            s, gl = subject(g), lon_at(g, t)
+            lord = ctx.refdata.sign_lord(sign_index(gl))
+            natural = ctx.refdata.natural_friendship(s, lord) if lord != s else None
+            if natural is None:
+                return dignity_of(ctx, s, gl, None)
+            if basis == "natural":
+                return dignity_of(ctx, s, gl, natural)
+            h = houses_apart(sign_index(gl), sign_index(lon_at(lord.split(":")[1], t)))
+            temporal = "friend" if h in TEMPORAL_FRIEND_HOUSES else "enemy"
+            return dignity_of(ctx, s, gl, COMPOUND[(natural, temporal)])
+
         for g in BODIES:
             s = subject(g)
             if g not in GRAHAS_7:
                 facts.append(ctx.unknown("dignity", s))
                 continue
-            lord = ctx.refdata.sign_lord(sign_index(lon[s]))
-            rel = friendship.get((s, lord))
-            dig = dignity_of(ctx, s, lon[s], None if rel is None else rel.value)
-            a = Assessment.combine(sign_a[s], assess_boundaries(ctx, g, dignity_boundaries(ctx, s)))
-            if rel is not None and basis == "compound":  # temporal part moves with the lord
-                a = Assessment.combine(a, sign_a.get(lord, a))
-            facts.append(ctx.fact("dignity", s, f"dignity:{dig}", sensitivity=a.sensitivity,
-                                  margins=a.margins))
+            changes = [*sign_changes_all,
+                       *target_changes(ctx, g, tuple(dignity_boundaries(ctx, s)))]
+            a = piecewise(ctx, changes, lambda t, g=g: dignity_at(g, t))
+            facts.append(ctx.fact("dignity", s, f"dignity:{dignity_at(g, t0)}",
+                                  sensitivity=a.sensitivity, margins=a.margins))
 
-        # combustion
-        sun = lon["graha:sun"]
+        # combustion: the orb depends on retrogression, so stations are change instants too
+        orbs = prof.combustion.orbs  # complete: validated when the profile loads
+
+        def combust_at(g: str, t: float) -> bool:
+            st = ctx.ephemeris.body(g, t, prof)  # type: ignore[arg-type]
+            orb = orbs[f"{g}_retro"] if st.speed < 0 and f"{g}_retro" in orbs else orbs[g]
+            return abs(signed_diff(st.longitude, lon_at("sun", t))) <= orb
+
         for g in BODIES:
             s = subject(g)
-            dist = abs(signed_diff(lon[s], sun))
             if g not in COMBUSTIBLE:
                 facts.append(ctx.fact("combust", s, False))
                 continue
-            retro = pos.fact("retrograde", s).value
-            orbs = prof.combustion.orbs  # complete: validated when the profile loads
-            orb = orbs[f"{g}_retro"] if retro and f"{g}_retro" in orbs else orbs[g]
-            a = assess_angle(ctx, g, "sun", [orb, 360.0 - orb])
-            facts.append(ctx.fact("sun_distance", s, dist, unit="deg"))
-            facts.append(ctx.fact("combust", s, dist <= orb, sensitivity=a.sensitivity,
+            radii = {orbs[g], orbs.get(f"{g}_retro", orbs[g])}
+            targets = tuple(sorted({x for r in radii for x in (r, 360.0 - r)}))
+            changes = [*angle_changes(ctx, g, "sun", targets), *station_times(ctx, g)]
+            a = piecewise(ctx, changes, lambda t, g=g: combust_at(g, t))
+            facts.append(ctx.fact("sun_distance", s, abs(signed_diff(lon[s], lon["graha:sun"])),
+                                  unit="deg"))
+            facts.append(ctx.fact("combust", s, combust_at(g, t0), sensitivity=a.sensitivity,
                                   margins=a.margins))
 
-        # graha yuddha
+        # graha yuddha: wars start and end at ±orb; the winner flips where the longitudes
+        # (lesser_longitude) or the latitudes (north_latitude) cross
         gy = prof.graha_yuddha
-        won: dict[str, int] = {f"graha:{g}": 0 for g in BODIES}
-        lost: dict[str, int] = {f"graha:{g}": 0 for g in BODIES}
-        war_a = {f"graha:{g}": Assessment("stable", (None, None)) for g in BODIES}
-        for i, ga in enumerate(gy.bodies):
-            for gb in gy.bodies[i + 1:]:
-                sa, sb = f"graha:{ga}", f"graha:{gb}"
-                a = assess_angle(ctx, ga, gb, [gy.orb_deg, 360.0 - gy.orb_deg])
-                war_a[sa] = Assessment.combine(war_a[sa], a)
-                war_a[sb] = Assessment.combine(war_a[sb], a)
-                if abs(signed_diff(lon[sa], lon[sb])) > gy.orb_deg:
+        pairs = [(a, b) for i, a in enumerate(gy.bodies) for b in gy.bodies[i + 1:]]
+
+        def wars_at(t: float) -> list[tuple[str, str]]:
+            out = []
+            for a, b in pairs:
+                la, lb = lon_at(a, t), lon_at(b, t)
+                if abs(signed_diff(la, lb)) > gy.orb_deg:
                     continue
-                win, lose = self._winner(pos, sa, sb, lon, gy.winner)
-                won[win] += 1
-                lost[lose] += 1
-                rels.append(Relation(id=f"{ctx.chart_id}/graha_yuddha/{win}/{lose}",
-                                     kind="graha_yuddha", source=win, target=lose,
-                                     system=f"orb_{gy.orb_deg}_{gy.winner}", value=win,
-                                     profile_id=prof.id, sensitivity=a.sensitivity))
-        for s in won:
-            # a planet in several wars is a loser if it lost any of them
-            v = "loser" if lost[s] else "winner" if won[s] else "none"
-            a = war_a[s]
-            facts.append(ctx.fact("graha_yuddha", s, v, sensitivity=a.sensitivity,
-                                  margins=a.margins))
+                if gy.winner == "north_latitude":
+                    lat_a = ctx.ephemeris.body(a, t, prof).latitude  # type: ignore[arg-type]
+                    lat_b = ctx.ephemeris.body(b, t, prof).latitude  # type: ignore[arg-type]
+                    out.append((a, b) if lat_a >= lat_b else (b, a))
+                else:  # lesser along the zodiac: b ahead of a by less than 180°
+                    out.append((a, b) if signed_diff(lb, la) >= 0 else (b, a))
+            return out
+
+        def outcome_at(g: str, t: float) -> str:
+            wars = wars_at(t)
+            if any(lose == g for _, lose in wars):  # a loser if it lost any war
+                return "loser"
+            return "winner" if any(win == g for win, _ in wars) else "none"
+
+        war_changes = {g: [] for g in BODIES}
+        for a, b in pairs:
+            times = [*angle_changes(ctx, a, b, (gy.orb_deg, 360.0 - gy.orb_deg, 0.0))]
+            if gy.winner == "north_latitude":
+                times += latitude_crossings(ctx, a, b)
+            for x in (a, b):
+                war_changes[x] += times
+        # a third planet's war can change another's outcome: share every pair's instants
+        all_war_changes = [c for ts in war_changes.values() for c in ts]
+        war_a = {g: piecewise(ctx, all_war_changes if war_changes[g] else [],
+                              lambda t, g=g: outcome_at(g, t)) for g in BODIES}
+        for win, lose in wars_at(t0):
+            a = Assessment.combine(war_a[win], war_a[lose])
+            rels.append(Relation(id=f"{ctx.chart_id}/graha_yuddha/graha:{win}/graha:{lose}",
+                                 kind="graha_yuddha", source=f"graha:{win}",
+                                 target=f"graha:{lose}", system=f"orb_{gy.orb_deg}_{gy.winner}",
+                                 value=f"graha:{win}", profile_id=prof.id,
+                                 sensitivity=a.sensitivity))
+        for g in BODIES:
+            a = war_a[g]
+            facts.append(ctx.fact("graha_yuddha", subject(g), outcome_at(g, t0),
+                                  sensitivity=a.sensitivity, margins=a.margins))
 
         # gandanta and rashi sandhi (bodies and the Lagna)
         g_arc, s_arc = prof.gandanta.arc_deg, prof.sandhi.arc_deg
@@ -163,11 +210,3 @@ class Condition:
                              relations=tuple(rels),
                              provenance={"dignity": prof.dignity.model_dump(),
                                          "dignity_varga": "D1"})
-
-    @staticmethod
-    def _winner(pos, sa: str, sb: str, lon: dict, rule: str) -> tuple[str, str]:
-        if rule == "north_latitude":
-            la, lb = pos.fact("latitude", sa).value, pos.fact("latitude", sb).value
-            return (sa, sb) if la >= lb else (sb, sa)
-        # "lesser" along the zodiac: sb ahead of sa by less than 180° means sa is behind
-        return (sa, sb) if signed_diff(lon[sb], lon[sa]) >= 0 else (sb, sa)

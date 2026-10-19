@@ -16,6 +16,7 @@ from astro.calc.context import ChartContext
 from astro.calc.core.angles import houses_apart
 from astro.calc.core.status import Status
 from astro.calc.engine import Deps, FeatureRequest
+from astro.calc.features.common import LAGNA, assessment_of, sign_at, sign_piecewise
 from astro.calc.model import ChartFact, FeatureResult
 from astro.calc.sensitivity import Assessment
 
@@ -41,17 +42,23 @@ class DashaContext:
         ref = ctx.refdata
         facts: list[ChartFact] = []
         md_lord = act.periods[0].lord
+        lordships = [f for f in rel.facts if f.kind == "lord_of" and f.frame == "lagna"]
+        lordships_known = all(f.value is not None for f in lordships)
+
+        def ruled_at(lord: str, t: float) -> tuple[str, ...]:
+            lagna = sign_at(ctx, LAGNA, t)
+            return tuple(f"bhava:{n}" for n in range(1, 13)
+                         if ref.sign_lord(lagna + n - 1) == lord)
+
         for period in act.periods:
             subj = f"dasha:vimshottari:{period.level}"
             lord = period.lord
             facts.append(ctx.fact("period_lord", subj, lord))
-            lordships = [f for f in rel.facts if f.kind == "lord_of" and f.frame == "lagna"]
-            if any(f.value is None for f in lordships):
+            if not lordships_known:
                 facts.append(ctx.unknown("lord_houses", subj))
             else:
-                # which houses a graha rules moves with the Lagna sign
-                a = Assessment.combine(*(Assessment(f.sensitivity, f.margin_minutes)
-                                         for f in lordships))
+                # the houses a graha rules move with the Lagna sign (a node rules none)
+                a = sign_piecewise(ctx, [LAGNA], lambda t, lord=lord: ruled_at(lord, t))
                 facts.append(ctx.fact("lord_houses", subj,
                                       tuple(f.subject for f in lordships if f.value == lord),
                                       sensitivity=a.sensitivity, margins=a.margins))
@@ -62,8 +69,7 @@ class DashaContext:
             facts.append(ctx.fact("context_refs", subj, tuple(dict.fromkeys(refs))))
             if period.level != "MD":
                 fa, fb = pos.fact("sign", md_lord), pos.fact("sign", lord)
-                a = Assessment.combine(Assessment(fa.sensitivity, fa.margin_minutes),
-                                       Assessment(fb.sensitivity, fb.margin_minutes))
+                a = Assessment.combine(assessment_of(fa), assessment_of(fb))
                 facts.append(ctx.fact("from_md_lord", subj,
                                       houses_apart(ref.rashi_index(fa.value),
                                                    ref.rashi_index(fb.value)),

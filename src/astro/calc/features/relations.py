@@ -10,11 +10,13 @@ from __future__ import annotations
 from typing import Any
 
 from astro.calc.context import ChartContext
+from astro.calc.core.angles import houses_apart
 from astro.calc.core.status import Status
 from astro.calc.engine import Deps, FeatureRequest
 from astro.calc.ephemeris.port import BODIES
-from astro.calc.features.common import assessment_of, subject
+from astro.calc.features.common import assessment_of, sign_at, sign_piecewise, subject
 from astro.calc.features.houses import DEFAULT_FRAMES as HOUSE_DEFAULT_FRAMES
+from astro.calc.features.houses import frame_reference
 from astro.calc.model import ChartFact, FeatureResult, Relation
 from astro.calc.refdata import GRAHAS_7
 from astro.calc.sensitivity import Assessment
@@ -57,19 +59,28 @@ class Relations:
                 if hs.value is None or not placements_known:
                     facts.append(ctx.unknown("occupants", f"bhava:{n}", frame=frame))
                     continue
-                in_house, nearby = [], []
+                in_house = []
                 for b in BODIES:
                     try:
-                        hf = houses.fact("house", subject(b), frame=frame)
+                        h = houses.fact("house", subject(b), frame=frame).value
                     except KeyError:  # the frame's own reference graha is in house 1
-                        h, a = 1, assessment_of(hs)
-                    else:
-                        h, a = hf.value, assessment_of(hf)
+                        h = 1
                     if h == n:
                         in_house.append(subject(b))
-                    if h in (n, n % 12 + 1, (n - 2) % 12 + 1):
-                        nearby.append(a)
-                a = Assessment.combine(assessment_of(hs), *nearby)
+                if frame == "lagna" and ctx.profile.house_system != "whole_sign":
+                    # cusp houses can be narrow: any sensitive placement may reach this house
+                    a = Assessment.combine(assessment_of(hs), *(
+                        assessment_of(f) for f in houses.facts
+                        if f.kind == "house" and f.frame == frame))
+                else:  # sign-based: exact over the sign changes of the reference and bodies
+                    ref_body = frame_reference(frame).split(":")[-1]
+
+                    def occupants_at(t: float, n: int = n, ref_body: str = ref_body):
+                        base = sign_at(ctx, ref_body, t)
+                        return tuple(subject(x) for x in BODIES
+                                     if houses_apart(base, sign_at(ctx, x, t)) == n)
+
+                    a = sign_piecewise(ctx, [ref_body, *BODIES], occupants_at)
                 facts.append(ctx.fact("occupants", f"bhava:{n}", tuple(in_house), frame=frame,
                                       sensitivity=a.sensitivity, margins=a.margins))
 
