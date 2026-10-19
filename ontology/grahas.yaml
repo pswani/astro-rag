@@ -1,0 +1,38 @@
+# Grahas (design §8). Only undisputed attributes used by the phase-1 calculations are here.
+# Exaltation, moolatrikona, combustion and node co-lordship wait for decision 3 (calc-review §5).
+meta: {status: provisional, reviewed_by: null, source: "BPHS ch. 3 (edition: requirements open question 1)"}
+grahas:
+  sun:
+    names: [Sun, Surya, Sūrya, Ravi, सूर्य]
+    own_signs: [rashi:leo]
+    natural_friendship: {friends: [moon, mars, jupiter], neutral: [mercury], enemies: [venus, saturn]}
+  moon:
+    names: [Moon, Chandra, Candra, Soma, चन्द्र]
+    own_signs: [rashi:cancer]
+    natural_friendship: {friends: [sun, mercury], neutral: [mars, jupiter, venus, saturn], enemies: []}
+  mars:
+    names: [Mars, Mangala, Maṅgala, Kuja, Angaraka, मंगल]
+    own_signs: [rashi:aries, rashi:scorpio]
+    natural_friendship: {friends: [sun, moon, jupiter], neutral: [venus, saturn], enemies: [mercury]}
+  mercury:
+    names: [Mercury, Budha, बुध]
+    own_signs: [rashi:gemini, rashi:virgo]
+    natural_friendship: {friends: [sun, venus], neutral: [mars, jupiter, saturn], enemies: [moon]}
+  jupiter:
+    names: [Jupiter, Brihaspati, Bṛhaspati, बृहस्पति]
+    own_signs: [rashi:sagittarius, rashi:pisces]
+    natural_friendship: {friends: [sun, moon, mars], neutral: [saturn], enemies: [mercury, venus]}
+  venus:
+    names: [Venus, Shukra, Śukra, शुक्र]
+    own_signs: [rashi:taurus, rashi:libra]
+    natural_friendship: {friends: [mercury, saturn], neutral: [mars, jupiter], enemies: [sun, moon]}
+  saturn:
+    names: [Saturn, Shani, Sani, Śani, Shanaishchara, शनि, शनैश्चर]
+    own_signs: [rashi:capricorn, rashi:aquarius]
+    natural_friendship: {friends: [mercury, venus], neutral: [jupiter], enemies: [sun, moon, mars]}
+  rahu:
+    names: [Rahu, Rāhu, North Node, राहु]
+    own_signs: []          # co-lordship of Aquarius is disputed; not modelled yet
+  ketu:
+    names: [Ketu, South Node, केतु]
+    own_signs: []          # co-lordship of Scorpio is disputed; not modelled yet

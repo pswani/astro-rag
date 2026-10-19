@@ -7,6 +7,7 @@
 | **Requirements** | [requirements.md](../req/requirements.md) and [memory.md](../req/memory.md). Requirement IDs (e.g. `DAS-2`, `MEM-SES-2`) are cited inline; §22 traces every one. |
 | **Supersedes** | `rag-claude.md` (rev 3) and `rag-gpt.md` (both removed; see git history) |
 | **Review log** | [review.md](review.md): conflicts resolved, defects fixed, rabbit holes removed |
+| **Calc review** | [calc-review.md](calc-review.md): build readiness, open gaps and reuse plan for §7 (pending adoption) |
 
 The requirements say **what** and how acceptance is shown. This document says **how**: architecture, schemas, algorithms, technology and delivery order. Values marked *initial* are starting points that the evaluation suite (§19) is allowed to change.
 

@@ -1,0 +1,30 @@
+# 27 equal sectors of 13°20′ from 0° sidereal Aries (design §8). Abhijit is not a sector here.
+meta: {status: provisional, reviewed_by: null, source: "BPHS ch. 46 (Vimshottari lords)"}
+nakshatras:   # index 0 = Ashwini
+  - {id: ashwini, lord: ketu}
+  - {id: bharani, lord: venus}
+  - {id: krittika, lord: sun}
+  - {id: rohini, lord: moon}
+  - {id: mrigashira, lord: mars}
+  - {id: ardra, lord: rahu}
+  - {id: punarvasu, lord: jupiter}
+  - {id: pushya, lord: saturn}
+  - {id: ashlesha, lord: mercury}
+  - {id: magha, lord: ketu}
+  - {id: purva_phalguni, lord: venus}
+  - {id: uttara_phalguni, lord: sun}
+  - {id: hasta, lord: moon}
+  - {id: chitra, lord: mars}
+  - {id: swati, lord: rahu}
+  - {id: vishakha, lord: jupiter}
+  - {id: anuradha, lord: saturn}
+  - {id: jyeshtha, lord: mercury}
+  - {id: mula, lord: ketu}
+  - {id: purva_ashadha, lord: venus}
+  - {id: uttara_ashadha, lord: sun}
+  - {id: shravana, lord: moon}
+  - {id: dhanishta, lord: mars}
+  - {id: shatabhisha, lord: rahu}
+  - {id: purva_bhadrapada, lord: jupiter}
+  - {id: uttara_bhadrapada, lord: saturn}
+  - {id: revati, lord: mercury}

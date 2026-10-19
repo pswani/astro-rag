@@ -1,0 +1,14 @@
+meta: {status: provisional, reviewed_by: null, source: "BPHS ch. 4"}
+rashis:   # in zodiacal order; index 0 = Aries
+  - {id: aries,       names: [Aries, Mesha, मेष],          lord: mars}
+  - {id: taurus,      names: [Taurus, Vrishabha, वृषभ],    lord: venus}
+  - {id: gemini,      names: [Gemini, Mithuna, मिथुन],     lord: mercury}
+  - {id: cancer,      names: [Cancer, Karka, Karkata, कर्क], lord: moon}
+  - {id: leo,         names: [Leo, Simha, सिंह],           lord: sun}
+  - {id: virgo,       names: [Virgo, Kanya, कन्या],        lord: mercury}
+  - {id: libra,       names: [Libra, Tula, तुला],          lord: venus}
+  - {id: scorpio,     names: [Scorpio, Vrishchika, वृश्चिक], lord: mars}
+  - {id: sagittarius, names: [Sagittarius, Dhanu, धनु],    lord: jupiter}
+  - {id: capricorn,   names: [Capricorn, Makara, मकर],     lord: saturn}
+  - {id: aquarius,    names: [Aquarius, Kumbha, कुम्भ],    lord: saturn}
+  - {id: pisces,      names: [Pisces, Meena, मीन],         lord: jupiter}

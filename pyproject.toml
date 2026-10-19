@@ -1,0 +1,71 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "astro"
+version = "0.1.0"
+description = "Jyotish agentic RAG: deterministic calculation layer"
+requires-python = ">=3.11"
+license = { text = "AGPL-3.0-or-later" }   # pyswisseph is AGPL (design open question 4)
+dependencies = [
+  "pyswisseph==2.10.3.2",
+  "pydantic>=2.7,<3",
+  "ruamel.yaml>=0.18",
+  "scipy>=1.11",
+  "numpy>=1.26",
+  "rfc8785>=0.1.4",
+  "tzdata==2026.5",   # IANA 2026e, pinned in profiles (design §6.2)
+]
+
+[project.optional-dependencies]
+geo = ["timezonefinder>=6.5"]
+dev = [
+  "pytest>=8",
+  "hypothesis>=6.100",
+  "import-linter>=2.0",
+  "ruff>=0.5",
+  "timezonefinder>=6.5",
+]
+# test-only oracle, never a runtime dependency (design D6); PyJHora imports these without
+# declaring them, and a missing one would make the oracle suite skip silently
+oracle = ["PyJHora==4.8.7", "geocoder", "geopy", "pytz", "python-dateutil", "reverse_geocode",
+          "requests"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+  "oracle: compares against PyJHora (needs the oracle extra)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+
+[tool.importlinter]
+root_packages = ["astro"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "calc is independent of normalize and methods"
+type = "forbidden"
+source_modules = ["astro.calc"]
+forbidden_modules = ["astro.normalize", "astro.methods"]
+
+[[tool.importlinter.contracts]]
+name = "only the Swiss adapter imports swisseph"
+type = "forbidden"
+source_modules = [
+  "astro.calc.core", "astro.calc.model", "astro.calc.profile", "astro.calc.refdata",
+  "astro.calc.solver", "astro.calc.sensitivity", "astro.calc.engine", "astro.calc.features",
+  "astro.calc.dasha", "astro.calc.transits", "astro.methods", "astro.normalize",
+]
+forbidden_modules = ["swisseph"]
+allow_indirect_imports = true
