@@ -1,0 +1,69 @@
+# Bhavas (houses) and house groups (design §8; KNW-1, KNW-3, KNW-12). Houses are a distinct entity
+# type from rashis (signs). Index 0 = the 1st house; IDs are bhava:1 … bhava:12.
+#
+# Ordinals are matched only when a house word follows ("10th house", "दशम भाव"); a bare ordinal is
+# left to the planner (docs/design/phase1-foundations.md §3.6).
+# Karakas are the commonly quoted sthira (fixed) significators; provisional until reviewed.
+meta: {status: provisional, reviewed_by: null, source: "BPHS ch. 11–12, 32 (edition: requirements open question 1)"}
+house_words: [house, houses, bhava, bhāva, bhav, sthana, sthāna, ghar, भाव, स्थान, घर]
+bhavas:
+  - names: [Tanu bhava, Lagna bhava, तनु भाव]
+    ordinals: [1st, first, prathama, प्रथम]
+    significations: [body, self, health, appearance, temperament]
+    karakas: [graha:sun]
+  - names: [Dhana bhava, धन भाव]
+    ordinals: [2nd, second, dvitiya, dwitiya, द्वितीय]
+    significations: [wealth, family, speech, food, early education]
+    karakas: [graha:jupiter]
+  - names: [Sahaja bhava, Bhratru bhava, Parakrama bhava, सहज भाव, पराक्रम भाव]
+    ordinals: [3rd, third, tritiya, तृतीय]
+    significations: [younger siblings, courage, effort, communication, short journeys]
+    karakas: [graha:mars]
+  - names: [Sukha bhava, Bandhu bhava, Matru bhava, सुख भाव, बन्धु भाव]
+    ordinals: [4th, fourth, chaturtha, चतुर्थ]
+    significations: [mother, home, property, vehicles, comforts, schooling]
+    karakas: [graha:moon, graha:mercury]
+  - names: [Putra bhava, Suta bhava, पुत्र भाव]
+    ordinals: [5th, fifth, panchama, पंचम]
+    significations: [children, intelligence, past merit, mantra, speculation]
+    karakas: [graha:jupiter]
+  - names: [Ari bhava, Ripu bhava, Shatru bhava, शत्रु भाव, रिपु भाव]
+    ordinals: [6th, sixth, shashtha, षष्ठ]
+    significations: [enemies, disease, debts, service, litigation]
+    karakas: [graha:mars, graha:saturn]
+  - names: [Kalatra bhava, Yuvati bhava, Jaya bhava, कलत्र भाव, जाया भाव]
+    ordinals: [7th, seventh, saptama, सप्तम]
+    significations: [spouse, marriage, partnership, travel]
+    karakas: [graha:venus]
+  - names: [Ayur bhava, Randhra bhava, Mrityu bhava, आयु भाव, रन्ध्र भाव]
+    ordinals: [8th, eighth, ashtama, अष्टम]
+    significations: [longevity, sudden events, inheritance, the hidden]
+    karakas: [graha:saturn]
+  - names: [Dharma bhava, Bhagya bhava, धर्म भाव, भाग्य भाव]
+    ordinals: [9th, ninth, navama, नवम]
+    significations: [father, teacher, dharma, fortune, long journeys]
+    karakas: [graha:jupiter, graha:sun]
+  - names: [Karma bhava, कर्म भाव]
+    ordinals: [10th, tenth, dashama, दशम]
+    significations: [career, status, action, authority]
+    karakas: [graha:sun, graha:mercury, graha:jupiter, graha:saturn]
+  - names: [Labha bhava, लाभ भाव]
+    ordinals: [11th, eleventh, ekadasha, एकादश]
+    significations: [gains, elder siblings, fulfilment of desires]
+    karakas: [graha:jupiter]
+  - names: [Vyaya bhava, व्यय भाव]
+    ordinals: [12th, twelfth, dvadasha, dwadasha, द्वादश]
+    significations: [losses, expenses, foreign lands, liberation, sleep]
+    karakas: [graha:saturn]
+bhava_groups:
+  kendra: {members: [1, 4, 7, 10], names: [Kendra, Kendras, Kendra bhava, Angular houses, केन्द्र]}
+  trikona: {members: [1, 5, 9], names: [Trikona, Trikonas, Trine houses, Kona, त्रिकोण]}
+  dusthana: {members: [6, 8, 12], names: [Dusthana, Dusthanas, Trik bhava, Trik houses, Trika, दुःस्थान]}
+  upachaya: {members: [3, 6, 10, 11], names: [Upachaya, Upachayas, Upachaya houses, उपचय]}
+  maraka: {members: [2, 7], names: [Maraka sthana, Maraka houses, मारक स्थान], ambiguous_names: [Maraka, मारक]}
+  panaphara: {members: [2, 5, 8, 11], names: [Panaphara, Succedent houses, पणफर]}
+  apoklima: {members: [3, 6, 9, 12], names: [Apoklima, Cadent houses, आपोक्लिम]}
+  dharma_trikona: {members: [1, 5, 9], names: [Dharma trikona, धर्म त्रिकोण]}
+  artha_trikona: {members: [2, 6, 10], names: [Artha trikona, अर्थ त्रिकोण]}
+  kama_trikona: {members: [3, 7, 11], names: [Kama trikona, काम त्रिकोण]}
+  moksha_trikona: {members: [4, 8, 12], names: [Moksha trikona, Moksha houses, मोक्ष त्रिकोण]}

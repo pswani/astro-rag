@@ -1,6 +1,7 @@
 meta: {status: provisional, reviewed_by: null, source: "BPHS ch. 46"}
 dasha_systems:
   vimshottari:
+    names: [Vimshottari, Vimśottarī, Vimsottari, Vimshottari dasha, विंशोत्तरी]
     total_years: 120
     # order from Ashwini's lord; the first MD lord is the lord of the Moon's nakshatra
     sequence:

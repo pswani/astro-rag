@@ -1,14 +1,14 @@
 meta: {status: provisional, reviewed_by: null, source: "BPHS ch. 4"}
-rashis:   # in zodiacal order; index 0 = Aries
-  - {id: aries,       names: [Aries, Mesha, मेष],          lord: mars}
-  - {id: taurus,      names: [Taurus, Vrishabha, वृषभ],    lord: venus}
-  - {id: gemini,      names: [Gemini, Mithuna, मिथुन],     lord: mercury}
-  - {id: cancer,      names: [Cancer, Karka, Karkata, कर्क], lord: moon}
-  - {id: leo,         names: [Leo, Simha, सिंह],           lord: sun}
-  - {id: virgo,       names: [Virgo, Kanya, कन्या],        lord: mercury}
-  - {id: libra,       names: [Libra, Tula, तुला],          lord: venus}
-  - {id: scorpio,     names: [Scorpio, Vrishchika, वृश्चिक], lord: mars}
-  - {id: sagittarius, names: [Sagittarius, Dhanu, धनु],    lord: jupiter}
-  - {id: capricorn,   names: [Capricorn, Makara, मकर],     lord: saturn}
-  - {id: aquarius,    names: [Aquarius, Kumbha, कुम्भ],    lord: saturn}
-  - {id: pisces,      names: [Pisces, Meena, मीन],         lord: jupiter}
+rashis:   # in zodiacal order; index 0 = Aries. Kanya, Mesh and Singh are also ordinary words or names
+  - {id: aries,       names: [Aries, Mesha, Meṣa, मेष],          lord: mars, ambiguous_names: [Mesh]}
+  - {id: taurus,      names: [Taurus, Vrishabha, Vṛṣabha, Vrishabh, Vrisha, वृषभ, वृष],    lord: venus}
+  - {id: gemini,      names: [Gemini, Mithuna, Mithun, मिथुन],     lord: mercury}
+  - {id: cancer,      names: [Cancer, Karka, Karkata, Karkaṭa, Kark, कर्क, कर्कट], lord: moon}
+  - {id: leo,         names: [Leo, Simha, Siṃha, सिंह],           lord: sun, ambiguous_names: [Singh]}
+  - {id: virgo,       names: [Virgo, Kanya rashi, Kanyā rāśi, कन्या राशि],        lord: mercury, ambiguous_names: [Kanya, Kanyā, कन्या]}
+  - {id: libra,       names: [Libra, Tula, Tulā, तुला],          lord: venus}
+  - {id: scorpio,     names: [Scorpio, Vrishchika, Vṛścika, Vrishchik, Vrischika, वृश्चिक], lord: mars}
+  - {id: sagittarius, names: [Sagittarius, Dhanu, Dhanus, Dhanush, धनु],    lord: jupiter}
+  - {id: capricorn,   names: [Capricorn, Makara, Makar, मकर],     lord: saturn}
+  - {id: aquarius,    names: [Aquarius, Kumbha, Kumbh, कुम्भ],    lord: saturn}
+  - {id: pisces,      names: [Pisces, Meena, Mina, Mīna, Meen, मीन],         lord: jupiter}

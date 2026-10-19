@@ -1,0 +1,13 @@
+# Deities (design §8; KNW-1). A minimal set for now: the deities whose names collide with other
+# entities (Brahma, Indra and Shiva are also nitya yogas; Krishna is also a paksha), plus graha
+# deities used in correspondences. Nakshatra deities and the Puranic set arrive with KNW-3 and the
+# story sources (phase 6).
+meta: {status: provisional, reviewed_by: null, source: "standard usage"}
+deities:
+  brahma: {names: [Brahma, Brahmā, ब्रह्मा]}
+  vishnu: {names: [Vishnu, Viṣṇu, विष्णु]}
+  shiva: {names: [Shiva, Śiva, Mahadeva, Mahādeva, शिव, महादेव]}
+  indra: {names: [Indra, इन्द्र]}
+  krishna: {names: [Krishna, Kṛṣṇa, कृष्ण]}
+  ganesha: {names: [Ganesha, Gaṇeśa, Ganesh, Ganapati, गणेश, गणपति]}
+  shani_deva: {names: [Shani Dev, Shani Deva, Shanidev, शनिदेव, शनि देव]}

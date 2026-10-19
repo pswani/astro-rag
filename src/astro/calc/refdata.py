@@ -100,12 +100,32 @@ class YamlReferenceData:
                     ("grahas", "rashis", "nakshatras", "panchanga", "dasha_systems", "vargas",
                      "karaka_schemes")}
         self.status = "provisional" if "provisional" in statuses else "reviewed"
-        self.version = content_hash({
-            "g": self._grahas, "r": self._rashis, "n": self._naks, "t": self._tithis,
-            "k": self._karanas, "y": self._yogas, "v": self._varas, "d": self._dashas,
-            "vg": self._vargas, "ks": self._karakas})[:16]
+        self.version = content_hash(self._calc_view())[:16]
         self._rashi_index = {r["id"]: i for i, r in enumerate(self._rashis)}
         self.check()
+
+    def _calc_view(self) -> dict:
+        """The fields calculations read. The version (part of every fact-cache key) hashes only
+        these, so editing names or other descriptive fields leaves cached facts valid."""
+        graha_keys = ("own_signs", "exaltation", "debilitation", "moolatrikona",
+                      "natural_friendship")
+        names = ("names", "ambiguous_names")
+        return {
+            "g": {g: {k: a[k] for k in graha_keys if k in a} for g, a in self._grahas.items()},
+            "r": [(r["id"], r["lord"]) for r in self._rashis],
+            "n": [(n["id"], n["lord"]) for n in self._naks],
+            "t": [t["id"] for t in self._tithis],
+            "k": {"movable": [k["id"] for k in self._karanas["movable"]],
+                  "fixed": {i: k["id"] for i, k in self._karanas["fixed"].items()}},
+            "y": [y["id"] for y in self._yogas],
+            "v": [(v["id"], v["lord"]) for v in self._varas],
+            "d": {s: {k: v for k, v in d.items() if k not in names}
+                  for s, d in self._dashas.items()},
+            "vg": {v: {k: x for k, x in s.items() if k not in names}
+                   for v, s in self._vargas.items()},
+            "ks": {s: {k: v for k, v in d.items() if k not in names}
+                   for s, d in self._karakas.items()},
+        }
 
     # -- integrity (CI: every referenced ID resolves) ---------------------------------------
     def check(self) -> None:
@@ -243,16 +263,16 @@ class YamlReferenceData:
         return tuple(self._vargas)
 
     def tithi_id(self, index: int) -> str:
-        return "tithi:" + self._tithis[index]
+        return "tithi:" + self._tithis[index]["id"]
 
     def karana_id(self, index: int) -> str:
         fixed = self._karanas["fixed"]
         if index in fixed:
-            return "karana:" + fixed[index]
-        return "karana:" + self._karanas["movable"][(index - 1) % 7]
+            return "karana:" + fixed[index]["id"]
+        return "karana:" + self._karanas["movable"][(index - 1) % 7]["id"]
 
     def nitya_yoga_id(self, index: int) -> str:
-        return "nitya_yoga:" + self._yogas[index]
+        return "nitya_yoga:" + self._yogas[index]["id"]
 
     def vara(self, weekday: int) -> tuple[str, str]:
         v = self._varas[weekday]

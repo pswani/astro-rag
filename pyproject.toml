@@ -66,10 +66,10 @@ root_packages = ["astro"]
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
-name = "calc is independent of normalize and methods"
+name = "calc is independent of normalize, methods and the ontology loader"
 type = "forbidden"
 source_modules = ["astro.calc"]
-forbidden_modules = ["astro.normalize", "astro.methods"]
+forbidden_modules = ["astro.normalize", "astro.methods", "astro.ontology"]
 
 [[tool.importlinter.contracts]]
 name = "only the Swiss adapter imports swisseph"
@@ -78,7 +78,7 @@ source_modules = [
   "astro.calc.core", "astro.calc.model", "astro.calc.profile", "astro.calc.refdata",
   "astro.calc.solver", "astro.calc.sensitivity", "astro.calc.engine", "astro.calc.features",
   "astro.calc.dasha", "astro.calc.transits", "astro.methods", "astro.normalize", "astro.cli",
-  "astro.resources", "astro.ephemeris_fetch",
+  "astro.resources", "astro.ephemeris_fetch", "astro.ontology",
 ]
 forbidden_modules = ["swisseph"]
 allow_indirect_imports = true

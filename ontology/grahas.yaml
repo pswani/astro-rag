@@ -1,61 +1,65 @@
 # Grahas (design §8). Only undisputed attributes used by the phase-1 calculations are here.
+# `ambiguous_names` are never matched alone (Guru is also a teacher; Manda also means slow).
 # Exaltation, debilitation and moolatrikona follow BPHS ch. 3 as commonly quoted; provisional until
 # the reviewer confirms them against the chosen edition. Node co-lordship and node dignities are
 # disputed and not modelled.
 meta: {status: provisional, reviewed_by: null, source: "BPHS ch. 3 (edition: requirements open question 1)"}
 grahas:
   sun:
-    names: [Sun, Surya, Sūrya, Ravi, सूर्य]
+    names: [Sun, Surya, Sūrya, Ravi, Aditya, Āditya, Suraj, सूर्य, रवि, सूरज, आदित्य]
     own_signs: [rashi:leo]
     exaltation: {sign: rashi:aries, degree: 10}
     debilitation: {sign: rashi:libra, degree: 10}
     moolatrikona: {sign: rashi:leo, from: 0, to: 20}
     natural_friendship: {friends: [moon, mars, jupiter], neutral: [mercury], enemies: [venus, saturn]}
   moon:
-    names: [Moon, Chandra, Candra, Soma, चन्द्र]
+    names: [Moon, Chandra, Candra, Chandrama, Candramā, Soma, चन्द्र, चन्द्रमा, सोम]
     own_signs: [rashi:cancer]
     exaltation: {sign: rashi:taurus, degree: 3}
     debilitation: {sign: rashi:scorpio, degree: 3}
     moolatrikona: {sign: rashi:taurus, from: 3, to: 30}
     natural_friendship: {friends: [sun, mercury], neutral: [mars, jupiter, venus, saturn], enemies: []}
   mars:
-    names: [Mars, Mangala, Maṅgala, Kuja, Angaraka, मंगल]
+    names: [Mars, Mangala, Maṅgala, Mangal, Kuja, Angaraka, Aṅgāraka, Bhauma, मंगल, कुज, अङ्गारक, भौम]
     own_signs: [rashi:aries, rashi:scorpio]
     exaltation: {sign: rashi:capricorn, degree: 28}
     debilitation: {sign: rashi:cancer, degree: 28}
     moolatrikona: {sign: rashi:aries, from: 0, to: 12}
     natural_friendship: {friends: [sun, moon, jupiter], neutral: [venus, saturn], enemies: [mercury]}
   mercury:
-    names: [Mercury, Budha, बुध]
+    names: [Mercury, Budha, Budh, बुध]
+    ambiguous_names: [Saumya]   # also "benefic"
     own_signs: [rashi:gemini, rashi:virgo]
     exaltation: {sign: rashi:virgo, degree: 15}
     debilitation: {sign: rashi:pisces, degree: 15}
     moolatrikona: {sign: rashi:virgo, from: 15, to: 20}
     natural_friendship: {friends: [sun, venus], neutral: [mars, jupiter, saturn], enemies: [moon]}
   jupiter:
-    names: [Jupiter, Brihaspati, Bṛhaspati, बृहस्पति]
+    names: [Jupiter, Brihaspati, Bṛhaspati, Brahaspati, बृहस्पति]
+    ambiguous_names: [Guru, गुरु]
     own_signs: [rashi:sagittarius, rashi:pisces]
     exaltation: {sign: rashi:cancer, degree: 5}
     debilitation: {sign: rashi:capricorn, degree: 5}
     moolatrikona: {sign: rashi:sagittarius, from: 0, to: 10}
     natural_friendship: {friends: [sun, moon, mars], neutral: [saturn], enemies: [mercury, venus]}
   venus:
-    names: [Venus, Shukra, Śukra, शुक्र]
+    names: [Venus, Shukra, Śukra, Sukra, शुक्र]
     own_signs: [rashi:taurus, rashi:libra]
     exaltation: {sign: rashi:pisces, degree: 27}
     debilitation: {sign: rashi:virgo, degree: 27}
     moolatrikona: {sign: rashi:libra, from: 0, to: 15}
     natural_friendship: {friends: [mercury, saturn], neutral: [mars, jupiter], enemies: [sun, moon]}
   saturn:
-    names: [Saturn, Shani, Sani, Śani, Shanaishchara, शनि, शनैश्चर]
+    names: [Saturn, Shani, Sani, Śani, Shanee, Shanaishchara, Śanaiścara, शनि, शनैश्चर]
+    ambiguous_names: [Manda, Sauri, मन्द]
     own_signs: [rashi:capricorn, rashi:aquarius]
     exaltation: {sign: rashi:libra, degree: 20}
     debilitation: {sign: rashi:aries, degree: 20}
     moolatrikona: {sign: rashi:aquarius, from: 0, to: 20}
     natural_friendship: {friends: [mercury, venus], neutral: [jupiter], enemies: [sun, moon, mars]}
   rahu:
-    names: [Rahu, Rāhu, North Node, राहु]
+    names: [Rahu, Rāhu, North Node, Dragon's Head, राहु]
     own_signs: []          # co-lordship of Aquarius is disputed; not modelled yet
   ketu:
-    names: [Ketu, South Node, केतु]
+    names: [Ketu, South Node, Dragon's Tail, केतु]
     own_signs: []          # co-lordship of Scorpio is disputed; not modelled yet

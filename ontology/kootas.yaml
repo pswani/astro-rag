@@ -1,0 +1,5 @@
+# Kootas (compatibility factors). Only the Nadi koota for now, because KNW-12 needs it kept apart
+# from Nadi astrology; the other kootas arrive with compatibility (phase 7).
+meta: {status: provisional, reviewed_by: null, source: "standard usage"}
+kootas:
+  nadi: {names: [Nadi koota, Nadi kuta, Nāḍī kūṭa, Nadi dosha, नाडी कूट, नाडी दोष], ambiguous_names: [Nadi, Nāḍī, Naadi, नाडी]}

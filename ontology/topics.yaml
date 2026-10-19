@@ -1,0 +1,18 @@
+# Topics: the closed list the planner and topic maps use (design §8, §11.3; KNW-6). `tier: core` is
+# M (phase 3); `should` is S. Names avoid words that usually refer to a person ("mother",
+# "brother"), because those are resolved against the person registry first (design §17.2).
+meta: {status: provisional, reviewed_by: null, source: "requirements KNW-6"}
+topics:
+  career: {tier: core, names: [Career, Profession, Occupation, Vocation, Job, Naukri, नौकरी, व्यवसाय, करियर]}
+  wealth: {tier: core, names: [Wealth, Money, Finance, Finances, Riches, Prosperity, धन, पैसा]}
+  marriage: {tier: core, names: [Marriage, Relationship, Relationships, Vivaha, Vivah, Shaadi, Shadi, विवाह, शादी]}
+  children: {tier: core, names: [Children, Progeny, Santana, Santan, संतान]}
+  education: {tier: core, names: [Education, Studies, Learning, शिक्षा, पढ़ाई]}
+  health: {tier: core, names: [Health, Wellbeing, Swasthya, स्वास्थ्य]}
+  property: {tier: core, names: [Property, Real estate, Sampatti, संपत्ति]}
+  siblings: {tier: core, names: [Siblings, भाई बहन]}
+  parents: {tier: core, names: [Parents, माता पिता]}
+  foreign: {tier: core, names: [Foreign travel, Foreign settlement, Living abroad, Abroad, Overseas, Videsh, विदेश]}
+  spirituality: {tier: core, names: [Spirituality, Spiritual life, Spiritual growth, Adhyatma, अध्यात्म]}
+  vehicles: {tier: should, names: [Vehicles, Vehicle, Vahana, वाहन]}
+  litigation: {tier: should, names: [Litigation, Lawsuit, Court case, Legal dispute, मुकदमा]}

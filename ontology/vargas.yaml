@@ -10,20 +10,20 @@
 # A degree exactly on a part boundary belongs to the later part.
 meta: {status: provisional, reviewed_by: null, source: "BPHS ch. 6 (edition: requirements open question 1)"}
 vargas:
-  D1:  {divisions: 1,  parts: equal, start: {rule: same}}
-  D2:  {divisions: 2,  parts: table, table: {odd: [[15, 4], [30, 3]], even: [[15, 3], [30, 4]]}}
-  D3:  {divisions: 3,  parts: equal, step: 4, start: {rule: same}}
-  D4:  {divisions: 4,  parts: equal, step: 3, start: {rule: same}}
-  D7:  {divisions: 7,  parts: equal, start: {rule: by_parity, odd: 0, even: 6}}
-  D9:  {divisions: 9,  parts: equal, start: {rule: by_modality, movable: 0, fixed: 8, dual: 4}}
-  D10: {divisions: 10, parts: equal, start: {rule: by_parity, odd: 0, even: 8}}
-  D12: {divisions: 12, parts: equal, start: {rule: same}}
-  D16: {divisions: 16, parts: equal, start: {rule: by_modality, basis: absolute, movable: 0, fixed: 4, dual: 8}}
-  D20: {divisions: 20, parts: equal, start: {rule: by_modality, basis: absolute, movable: 0, fixed: 8, dual: 4}}
-  D24: {divisions: 24, parts: equal, start: {rule: by_parity, basis: absolute, odd: 4, even: 3}}
-  D27: {divisions: 27, parts: equal, start: {rule: by_element, basis: absolute, fire: 0, earth: 3, air: 6, water: 9}}
-  D30: {divisions: 30, parts: table, table: {odd: [[5, 0], [10, 10], [18, 8], [25, 2], [30, 6]],
+  D1:  {names: [D1, Rasi chart, Rashi chart, Rāśi chakra, Birth chart, Lagna chart, राशि चक्र], divisions: 1,  parts: equal, start: {rule: same}}
+  D2:  {names: [D2, Hora chart], ambiguous_names: [Hora, होरा], divisions: 2,  parts: table, table: {odd: [[15, 4], [30, 3]], even: [[15, 3], [30, 4]]}}
+  D3:  {names: [D3, Drekkana, Drekkāṇa, Dreshkana, Drekana, द्रेष्काण], divisions: 3,  parts: equal, step: 4, start: {rule: same}}
+  D4:  {names: [D4, Chaturthamsha, Chaturthāṃśa, Turyamsha, चतुर्थांश], divisions: 4,  parts: equal, step: 3, start: {rule: same}}
+  D7:  {names: [D7, Saptamsha, Saptāṃśa, Saptamsa, सप्तमांश], divisions: 7,  parts: equal, start: {rule: by_parity, odd: 0, even: 6}}
+  D9:  {names: [D9, Navamsa, Navamsha, Navāṃśa, Navansh, नवमांश, नवांश], divisions: 9,  parts: equal, start: {rule: by_modality, movable: 0, fixed: 8, dual: 4}}
+  D10: {names: [D10, Dasamsa, Dashamsha, Daśāṃśa, दशमांश, दशांश], divisions: 10, parts: equal, start: {rule: by_parity, odd: 0, even: 8}}
+  D12: {names: [D12, Dwadashamsha, Dvādaśāṃśa, Dwadasamsa, द्वादशांश], divisions: 12, parts: equal, start: {rule: same}}
+  D16: {names: [D16, Shodashamsha, Ṣoḍaśāṃśa, Kalamsha, षोडशांश], divisions: 16, parts: equal, start: {rule: by_modality, basis: absolute, movable: 0, fixed: 4, dual: 8}}
+  D20: {names: [D20, Vimshamsha, Viṃśāṃśa, Vimsamsa, विंशांश], divisions: 20, parts: equal, start: {rule: by_modality, basis: absolute, movable: 0, fixed: 8, dual: 4}}
+  D24: {names: [D24, Chaturvimshamsha, Siddhamsha, Siddhāṃśa, चतुर्विंशांश], divisions: 24, parts: equal, start: {rule: by_parity, basis: absolute, odd: 4, even: 3}}
+  D27: {names: [D27, Saptavimshamsha, Bhamsha, Nakshatramsha, सप्तविंशांश], divisions: 27, parts: equal, start: {rule: by_element, basis: absolute, fire: 0, earth: 3, air: 6, water: 9}}
+  D30: {names: [D30, Trimshamsha, Triṃśāṃśa, Trimsamsa, त्रिंशांश], divisions: 30, parts: table, table: {odd: [[5, 0], [10, 10], [18, 8], [25, 2], [30, 6]],
                                             even: [[5, 1], [12, 5], [20, 11], [25, 9], [30, 7]]}}
-  D40: {divisions: 40, parts: equal, start: {rule: by_parity, basis: absolute, odd: 0, even: 6}}
-  D45: {divisions: 45, parts: equal, start: {rule: by_modality, basis: absolute, movable: 0, fixed: 4, dual: 8}}
-  D60: {divisions: 60, parts: equal, start: {rule: same}}
+  D40: {names: [D40, Khavedamsha, Khavedāṃśa, खवेदांश], divisions: 40, parts: equal, start: {rule: by_parity, basis: absolute, odd: 0, even: 6}}
+  D45: {names: [D45, Akshavedamsha, Akṣavedāṃśa, अक्षवेदांश], divisions: 45, parts: equal, start: {rule: by_modality, basis: absolute, movable: 0, fixed: 4, dual: 8}}
+  D60: {names: [D60, Shashtiamsha, Ṣaṣṭyaṃśa, Shashtyamsha, षष्ट्यंश], divisions: 60, parts: equal, start: {rule: same}}

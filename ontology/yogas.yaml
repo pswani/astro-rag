@@ -1,0 +1,36 @@
+# Chart yogas and doshas: IDs and names only (design §8; KNW-1, KNW-5 g, KNW-12). Their conditions
+# live in rule cards (phase 3). This is a seed for tagging; the curated Core set of 20–30 is
+# chosen with the reviewer (design §10.7), and entries may be added or dropped then.
+#
+# Chart yogas are a distinct entity type from nitya yogas (panchanga.yaml). Vajra and Shula are
+# both, so "Vajra yoga" and "Shula yoga" are ambiguous in both files.
+meta: {status: provisional, reviewed_by: null, source: "BPHS ch. 34–41; Phaladeepika (editions: requirements open question 1)"}
+yogas:
+  gajakesari: {category: lunar, names: [Gajakesari yoga, Gaja Kesari yoga, Gajakesari, Gaja Kesari, Gajakesari yog, गजकेसरी, गजकेसरी योग]}
+  sunapha: {category: lunar, names: [Sunapha yoga, Sunaphā yoga, Sunapha, सुनफा]}
+  anapha: {category: lunar, names: [Anapha yoga, Anaphā yoga, Anapha, अनफा]}
+  durudhara: {category: lunar, names: [Durudhara yoga, Durdhura yoga, Durudhara, दुरुधरा]}
+  kemadruma: {category: arishta, names: [Kemadruma yoga, Kemadruma, Kemdrum yoga, केमद्रुम, केमद्रुम योग]}
+  chandra_mangala: {category: lunar, names: [Chandra Mangala yoga, Chandra Mangal yoga, Chandra-Mangala yoga, चन्द्र मंगल योग]}
+  vesi: {category: solar, names: [Vesi yoga, Veshi yoga, Vesi, वेशि योग]}
+  vasi: {category: solar, names: [Vasi yoga, Voshi yoga, वाशि योग]}
+  ubhayachari: {category: solar, names: [Ubhayachari yoga, Ubhayachari, उभयचरी योग]}
+  budha_aditya: {category: solar, names: [Budha Aditya yoga, Budhaditya yoga, Budhaditya, Budh Aditya yoga, बुधादित्य, बुधादित्य योग]}
+  ruchaka: {category: mahapurusha, names: [Ruchaka yoga, Rucaka yoga, Ruchaka, रुचक, रुचक योग]}
+  bhadra: {category: mahapurusha, names: [Bhadra yoga, भद्र योग], ambiguous_names: [Bhadra]}
+  hamsa: {category: mahapurusha, names: [Hamsa yoga, Hansa yoga, Haṃsa yoga, हंस योग], ambiguous_names: [Hamsa, Hansa]}
+  malavya: {category: mahapurusha, names: [Malavya yoga, Mālavya yoga, Malavya, मालव्य, मालव्य योग]}
+  shasha: {category: mahapurusha, names: [Shasha yoga, Śaśa yoga, Sasa yoga, शश योग]}
+  adhi: {category: lunar, names: [Adhi yoga, अधि योग]}
+  amala: {category: other, names: [Amala yoga, Amala, अमला योग]}
+  raja: {category: raja, names: [Raja yoga, Raj yoga, Rajayoga, Raja yog, राजयोग, राज योग]}
+  dhana: {category: dhana, names: [Dhana yoga, Dhan yoga, धन योग]}
+  neecha_bhanga_raja: {category: cancellation, names: [Neecha Bhanga Raja yoga, Neechabhanga Raja yoga, Neecha bhanga, Neechabhanga, Nichabhanga, Nīcabhaṅga, नीचभंग, नीचभंग राजयोग]}
+  viparita_raja: {category: raja, names: [Viparita Raja yoga, Vipareeta Raja yoga, Vipreet Raj yoga, विपरीत राजयोग]}
+  harsha: {category: raja, names: [Harsha yoga, Harṣa yoga, हर्ष योग]}
+  sarala: {category: raja, names: [Sarala yoga, सरल योग]}
+  vimala: {category: raja, names: [Vimala yoga, विमल योग]}
+  vajra: {category: nabhasa, ambiguous_names: [Vajra yoga, वज्र योग]}
+  shula: {category: nabhasa, ambiguous_names: [Shula yoga, Śūla yoga, शूल योग]}
+  kuja_dosha: {category: dosha, names: [Kuja dosha, Kuja dosham, Mangal dosha, Mangal dosh, Mangala dosha, Manglik, Mangalik, Manglik dosha, मंगल दोष, मांगलिक]}
+  kala_sarpa: {category: dosha, names: [Kala Sarpa yoga, Kala Sarpa dosha, Kalasarpa, Kaal Sarp dosh, Kaal Sarp yog, Kaal Sarp dosha, काल सर्प दोष, कालसर्प योग]}

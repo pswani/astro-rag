@@ -1,72 +1,180 @@
-# Panchanga limbs (design §7.4, KNW-12). Nitya yogas are a distinct entity type from chart yogas.
+# Panchanga limbs (design §7.4, §8; KNW-1, KNW-12). Order matters: the calculation indexes these
+# lists (tithi 1 = index 0, nitya yoga 1 = index 0, vara 0 = Sunday). Nitya yogas are a distinct
+# entity type from chart yogas (yogas.yaml).
+#
+# Naming rules (docs/design/phase1-foundations.md §3.6):
+# - a tithi name used in both pakshas (Ekadashi) is ambiguous; with its paksha it resolves;
+# - nitya yogas are named with "yoga" (Brahma yoga), because several bare names are deities;
+# - bare "Shukla" is the paksha or the 24th nitya yoga, so it is ambiguous.
 meta: {status: provisional, reviewed_by: null, source: "standard panchanga tables"}
+pakshas:
+  - {id: shukla, names: [Shukla paksha, Śukla pakṣa, Sudi paksha, Waxing moon, Bright half, शुक्ल पक्ष], ambiguous_names: [Shukla, Śukla, शुक्ल]}
+  - {id: krishna, names: [Krishna paksha, Kṛṣṇa pakṣa, Vadi paksha, Bahula paksha, Waning moon, Dark half, कृष्ण पक्ष]}
 tithis:   # index 0..29 = tithi 1..30
-  - shukla_pratipada
-  - shukla_dwitiya
-  - shukla_tritiya
-  - shukla_chaturthi
-  - shukla_panchami
-  - shukla_shashthi
-  - shukla_saptami
-  - shukla_ashtami
-  - shukla_navami
-  - shukla_dashami
-  - shukla_ekadashi
-  - shukla_dwadashi
-  - shukla_trayodashi
-  - shukla_chaturdashi
-  - shukla_purnima
-  - krishna_pratipada
-  - krishna_dwitiya
-  - krishna_tritiya
-  - krishna_chaturthi
-  - krishna_panchami
-  - krishna_shashthi
-  - krishna_saptami
-  - krishna_ashtami
-  - krishna_navami
-  - krishna_dashami
-  - krishna_ekadashi
-  - krishna_dwadashi
-  - krishna_trayodashi
-  - krishna_chaturdashi
-  - krishna_amavasya
+  - id: shukla_pratipada
+    names: [Shukla Pratipada, Shukla Pratipat, Shukla Prathama, Shukla Padyami, Shukla Padva, Śukla Pratipada, Śukla Pratipat, Śukla Prathama, Śukla Padyami, Śukla Padva, Sudi Pratipada, Sudi Pratipat, Sudi Prathama, Sudi Padyami, Sudi Padva, Shukla paksha Pratipada, शुक्ल प्रतिपदा, शुक्ल प्रथमा]
+    ambiguous_names: [Pratipada, Pratipat, Prathama, Padyami, Padva, प्रतिपदा, प्रथमा]
+  - id: shukla_dwitiya
+    names: [Shukla Dwitiya, Shukla Dvitiya, Shukla Dvitīyā, Shukla Dooj, Shukla Duj, Śukla Dwitiya, Śukla Dvitiya, Śukla Dvitīyā, Śukla Dooj, Śukla Duj, Sudi Dwitiya, Sudi Dvitiya, Sudi Dvitīyā, Sudi Dooj, Sudi Duj, Shukla paksha Dwitiya, शुक्ल द्वितीया, शुक्ल दूज]
+    ambiguous_names: [Dwitiya, Dvitiya, Dvitīyā, Dooj, Duj, द्वितीया, दूज]
+  - id: shukla_tritiya
+    names: [Shukla Tritiya, Shukla Tṛtīyā, Shukla Teej, Śukla Tritiya, Śukla Tṛtīyā, Śukla Teej, Sudi Tritiya, Sudi Tṛtīyā, Sudi Teej, Shukla paksha Tritiya, शुक्ल तृतीया, शुक्ल तीज]
+    ambiguous_names: [Tritiya, Tṛtīyā, Teej, तृतीया, तीज]
+  - id: shukla_chaturthi
+    names: [Shukla Chaturthi, Shukla Caturthī, Shukla Chauth, Śukla Chaturthi, Śukla Caturthī, Śukla Chauth, Sudi Chaturthi, Sudi Caturthī, Sudi Chauth, Shukla paksha Chaturthi, शुक्ल चतुर्थी, शुक्ल चौथ]
+    ambiguous_names: [Chaturthi, Caturthī, Chauth, चतुर्थी, चौथ]
+  - id: shukla_panchami
+    names: [Shukla Panchami, Shukla Pañcamī, Śukla Panchami, Śukla Pañcamī, Sudi Panchami, Sudi Pañcamī, Shukla paksha Panchami, शुक्ल पंचमी]
+    ambiguous_names: [Panchami, Pañcamī, पंचमी]
+  - id: shukla_shashthi
+    names: [Shukla Shashthi, Shukla Shashti, Shukla Ṣaṣṭhī, Shukla Sashti, Shukla Chhath, Śukla Shashthi, Śukla Shashti, Śukla Ṣaṣṭhī, Śukla Sashti, Śukla Chhath, Sudi Shashthi, Sudi Shashti, Sudi Ṣaṣṭhī, Sudi Sashti, Sudi Chhath, Shukla paksha Shashthi, शुक्ल षष्ठी, शुक्ल छठ]
+    ambiguous_names: [Shashthi, Shashti, Ṣaṣṭhī, Sashti, Chhath, षष्ठी, छठ]
+  - id: shukla_saptami
+    names: [Shukla Saptami, Shukla Saptamī, Śukla Saptami, Śukla Saptamī, Sudi Saptami, Sudi Saptamī, Shukla paksha Saptami, शुक्ल सप्तमी]
+    ambiguous_names: [Saptami, Saptamī, सप्तमी]
+  - id: shukla_ashtami
+    names: [Shukla Ashtami, Shukla Aṣṭamī, Śukla Ashtami, Śukla Aṣṭamī, Sudi Ashtami, Sudi Aṣṭamī, Shukla paksha Ashtami, शुक्ल अष्टमी]
+    ambiguous_names: [Ashtami, Aṣṭamī, अष्टमी]
+  - id: shukla_navami
+    names: [Shukla Navami, Shukla Navamī, Śukla Navami, Śukla Navamī, Sudi Navami, Sudi Navamī, Shukla paksha Navami, शुक्ल नवमी]
+    ambiguous_names: [Navami, Navamī, नवमी]
+  - id: shukla_dashami
+    names: [Shukla Dashami, Shukla Daśamī, Shukla Dasami, Śukla Dashami, Śukla Daśamī, Śukla Dasami, Sudi Dashami, Sudi Daśamī, Sudi Dasami, Shukla paksha Dashami, शुक्ल दशमी]
+    ambiguous_names: [Dashami, Daśamī, Dasami, दशमी]
+  - id: shukla_ekadashi
+    names: [Shukla Ekadashi, Shukla Ekādaśī, Shukla Ekadasi, Shukla Gyaras, Śukla Ekadashi, Śukla Ekādaśī, Śukla Ekadasi, Śukla Gyaras, Sudi Ekadashi, Sudi Ekādaśī, Sudi Ekadasi, Sudi Gyaras, Shukla paksha Ekadashi, शुक्ल एकादशी, शुक्ल ग्यारस]
+    ambiguous_names: [Ekadashi, Ekādaśī, Ekadasi, Gyaras, एकादशी, ग्यारस]
+  - id: shukla_dwadashi
+    names: [Shukla Dwadashi, Shukla Dvādaśī, Shukla Dvadasi, Shukla Baras, Śukla Dwadashi, Śukla Dvādaśī, Śukla Dvadasi, Śukla Baras, Sudi Dwadashi, Sudi Dvādaśī, Sudi Dvadasi, Sudi Baras, Shukla paksha Dwadashi, शुक्ल द्वादशी, शुक्ल बारस]
+    ambiguous_names: [Dwadashi, Dvādaśī, Dvadasi, Baras, द्वादशी, बारस]
+  - id: shukla_trayodashi
+    names: [Shukla Trayodashi, Shukla Trayodaśī, Shukla Teras, Śukla Trayodashi, Śukla Trayodaśī, Śukla Teras, Sudi Trayodashi, Sudi Trayodaśī, Sudi Teras, Shukla paksha Trayodashi, शुक्ल त्रयोदशी, शुक्ल तेरस]
+    ambiguous_names: [Trayodashi, Trayodaśī, Teras, त्रयोदशी, तेरस]
+  - id: shukla_chaturdashi
+    names: [Shukla Chaturdashi, Shukla Caturdaśī, Shukla Chaudas, Śukla Chaturdashi, Śukla Caturdaśī, Śukla Chaudas, Sudi Chaturdashi, Sudi Caturdaśī, Sudi Chaudas, Shukla paksha Chaturdashi, शुक्ल चतुर्दशी, शुक्ल चौदस]
+    ambiguous_names: [Chaturdashi, Caturdaśī, Chaudas, चतुर्दशी, चौदस]
+  - id: shukla_purnima
+    names: [Purnima, Pūrṇimā, Poornima, Pournami, Full moon, पूर्णिमा, पूनम]
+  - id: krishna_pratipada
+    names: [Krishna Pratipada, Krishna Pratipat, Krishna Prathama, Krishna Padyami, Krishna Padva, Kṛṣṇa Pratipada, Kṛṣṇa Pratipat, Kṛṣṇa Prathama, Kṛṣṇa Padyami, Kṛṣṇa Padva, Vadi Pratipada, Vadi Pratipat, Vadi Prathama, Vadi Padyami, Vadi Padva, Bahula Pratipada, Bahula Pratipat, Bahula Prathama, Bahula Padyami, Bahula Padva, Krishna paksha Pratipada, कृष्ण प्रतिपदा, कृष्ण प्रथमा]
+    ambiguous_names: [Pratipada, Pratipat, Prathama, Padyami, Padva, प्रतिपदा, प्रथमा]
+  - id: krishna_dwitiya
+    names: [Krishna Dwitiya, Krishna Dvitiya, Krishna Dvitīyā, Krishna Dooj, Krishna Duj, Kṛṣṇa Dwitiya, Kṛṣṇa Dvitiya, Kṛṣṇa Dvitīyā, Kṛṣṇa Dooj, Kṛṣṇa Duj, Vadi Dwitiya, Vadi Dvitiya, Vadi Dvitīyā, Vadi Dooj, Vadi Duj, Bahula Dwitiya, Bahula Dvitiya, Bahula Dvitīyā, Bahula Dooj, Bahula Duj, Krishna paksha Dwitiya, कृष्ण द्वितीया, कृष्ण दूज]
+    ambiguous_names: [Dwitiya, Dvitiya, Dvitīyā, Dooj, Duj, द्वितीया, दूज]
+  - id: krishna_tritiya
+    names: [Krishna Tritiya, Krishna Tṛtīyā, Krishna Teej, Kṛṣṇa Tritiya, Kṛṣṇa Tṛtīyā, Kṛṣṇa Teej, Vadi Tritiya, Vadi Tṛtīyā, Vadi Teej, Bahula Tritiya, Bahula Tṛtīyā, Bahula Teej, Krishna paksha Tritiya, कृष्ण तृतीया, कृष्ण तीज]
+    ambiguous_names: [Tritiya, Tṛtīyā, Teej, तृतीया, तीज]
+  - id: krishna_chaturthi
+    names: [Krishna Chaturthi, Krishna Caturthī, Krishna Chauth, Kṛṣṇa Chaturthi, Kṛṣṇa Caturthī, Kṛṣṇa Chauth, Vadi Chaturthi, Vadi Caturthī, Vadi Chauth, Bahula Chaturthi, Bahula Caturthī, Bahula Chauth, Krishna paksha Chaturthi, कृष्ण चतुर्थी, कृष्ण चौथ]
+    ambiguous_names: [Chaturthi, Caturthī, Chauth, चतुर्थी, चौथ]
+  - id: krishna_panchami
+    names: [Krishna Panchami, Krishna Pañcamī, Kṛṣṇa Panchami, Kṛṣṇa Pañcamī, Vadi Panchami, Vadi Pañcamī, Bahula Panchami, Bahula Pañcamī, Krishna paksha Panchami, कृष्ण पंचमी]
+    ambiguous_names: [Panchami, Pañcamī, पंचमी]
+  - id: krishna_shashthi
+    names: [Krishna Shashthi, Krishna Shashti, Krishna Ṣaṣṭhī, Krishna Sashti, Krishna Chhath, Kṛṣṇa Shashthi, Kṛṣṇa Shashti, Kṛṣṇa Ṣaṣṭhī, Kṛṣṇa Sashti, Kṛṣṇa Chhath, Vadi Shashthi, Vadi Shashti, Vadi Ṣaṣṭhī, Vadi Sashti, Vadi Chhath, Bahula Shashthi, Bahula Shashti, Bahula Ṣaṣṭhī, Bahula Sashti, Bahula Chhath, Krishna paksha Shashthi, कृष्ण षष्ठी, कृष्ण छठ]
+    ambiguous_names: [Shashthi, Shashti, Ṣaṣṭhī, Sashti, Chhath, षष्ठी, छठ]
+  - id: krishna_saptami
+    names: [Krishna Saptami, Krishna Saptamī, Kṛṣṇa Saptami, Kṛṣṇa Saptamī, Vadi Saptami, Vadi Saptamī, Bahula Saptami, Bahula Saptamī, Krishna paksha Saptami, कृष्ण सप्तमी]
+    ambiguous_names: [Saptami, Saptamī, सप्तमी]
+  - id: krishna_ashtami
+    names: [Krishna Ashtami, Krishna Aṣṭamī, Kṛṣṇa Ashtami, Kṛṣṇa Aṣṭamī, Vadi Ashtami, Vadi Aṣṭamī, Bahula Ashtami, Bahula Aṣṭamī, Krishna paksha Ashtami, कृष्ण अष्टमी]
+    ambiguous_names: [Ashtami, Aṣṭamī, अष्टमी]
+  - id: krishna_navami
+    names: [Krishna Navami, Krishna Navamī, Kṛṣṇa Navami, Kṛṣṇa Navamī, Vadi Navami, Vadi Navamī, Bahula Navami, Bahula Navamī, Krishna paksha Navami, कृष्ण नवमी]
+    ambiguous_names: [Navami, Navamī, नवमी]
+  - id: krishna_dashami
+    names: [Krishna Dashami, Krishna Daśamī, Krishna Dasami, Kṛṣṇa Dashami, Kṛṣṇa Daśamī, Kṛṣṇa Dasami, Vadi Dashami, Vadi Daśamī, Vadi Dasami, Bahula Dashami, Bahula Daśamī, Bahula Dasami, Krishna paksha Dashami, कृष्ण दशमी]
+    ambiguous_names: [Dashami, Daśamī, Dasami, दशमी]
+  - id: krishna_ekadashi
+    names: [Krishna Ekadashi, Krishna Ekādaśī, Krishna Ekadasi, Krishna Gyaras, Kṛṣṇa Ekadashi, Kṛṣṇa Ekādaśī, Kṛṣṇa Ekadasi, Kṛṣṇa Gyaras, Vadi Ekadashi, Vadi Ekādaśī, Vadi Ekadasi, Vadi Gyaras, Bahula Ekadashi, Bahula Ekādaśī, Bahula Ekadasi, Bahula Gyaras, Krishna paksha Ekadashi, कृष्ण एकादशी, कृष्ण ग्यारस]
+    ambiguous_names: [Ekadashi, Ekādaśī, Ekadasi, Gyaras, एकादशी, ग्यारस]
+  - id: krishna_dwadashi
+    names: [Krishna Dwadashi, Krishna Dvādaśī, Krishna Dvadasi, Krishna Baras, Kṛṣṇa Dwadashi, Kṛṣṇa Dvādaśī, Kṛṣṇa Dvadasi, Kṛṣṇa Baras, Vadi Dwadashi, Vadi Dvādaśī, Vadi Dvadasi, Vadi Baras, Bahula Dwadashi, Bahula Dvādaśī, Bahula Dvadasi, Bahula Baras, Krishna paksha Dwadashi, कृष्ण द्वादशी, कृष्ण बारस]
+    ambiguous_names: [Dwadashi, Dvādaśī, Dvadasi, Baras, द्वादशी, बारस]
+  - id: krishna_trayodashi
+    names: [Krishna Trayodashi, Krishna Trayodaśī, Krishna Teras, Kṛṣṇa Trayodashi, Kṛṣṇa Trayodaśī, Kṛṣṇa Teras, Vadi Trayodashi, Vadi Trayodaśī, Vadi Teras, Bahula Trayodashi, Bahula Trayodaśī, Bahula Teras, Krishna paksha Trayodashi, कृष्ण त्रयोदशी, कृष्ण तेरस]
+    ambiguous_names: [Trayodashi, Trayodaśī, Teras, त्रयोदशी, तेरस]
+  - id: krishna_chaturdashi
+    names: [Krishna Chaturdashi, Krishna Caturdaśī, Krishna Chaudas, Kṛṣṇa Chaturdashi, Kṛṣṇa Caturdaśī, Kṛṣṇa Chaudas, Vadi Chaturdashi, Vadi Caturdaśī, Vadi Chaudas, Bahula Chaturdashi, Bahula Caturdaśī, Bahula Chaudas, Krishna paksha Chaturdashi, कृष्ण चतुर्दशी, कृष्ण चौदस]
+    ambiguous_names: [Chaturdashi, Caturdaśī, Chaudas, चतुर्दशी, चौदस]
+  - id: krishna_amavasya
+    names: [Amavasya, Amāvāsyā, Amavasi, Amavas, New moon, अमावस्या, अमावस]
 karanas:
-  movable: [bava, balava, kaulava, taitila, gara, vanija, vishti]   # cycle 8 times for k = 1..56
-  fixed: {0: kimstughna, 57: shakuni, 58: chatushpada, 59: naga}
+  movable:   # cycle 8 times for k = 1..56
+    - {id: bava, names: [Bava, Bava karana, बव]}
+    - {id: balava, names: [Balava, Bālava, Balava karana, बालव]}
+    - {id: kaulava, names: [Kaulava, Kaulava karana, कौलव]}
+    - {id: taitila, names: [Taitila, Taitula, Taitila karana, तैतिल]}
+    - {id: gara, names: [Gara karana, Garaja, Garija, गर करण]}
+    - {id: vanija, names: [Vanija, Vaṇija, Banija, Vanija karana, वणिज]}
+    - {id: vishti, names: [Vishti, Viṣṭi, Vishti karana, विष्टि], ambiguous_names: [Bhadra, भद्रा]}
+  fixed:
+    0: {id: kimstughna, names: [Kimstughna, Kiṃstughna, Kintughna, Kimstughna karana, किंस्तुघ्न]}
+    57: {id: shakuni, names: [Shakuni, Śakuni, Shakuni karana, शकुनि]}
+    58: {id: chatushpada, names: [Chatushpada, Catuṣpada, Chatushpada karana, चतुष्पद]}
+    59: {id: naga, names: [Naga karana, Nāga karaṇa, नाग करण], ambiguous_names: [Naga, Nāga, नाग]}
 nitya_yogas:   # index 0..26
-  - vishkambha
-  - priti
-  - ayushman
-  - saubhagya
-  - shobhana
-  - atiganda
-  - sukarma
-  - dhriti
-  - shula
-  - ganda
-  - vriddhi
-  - dhruva
-  - vyaghata
-  - harshana
-  - vajra
-  - siddhi
-  - vyatipata
-  - variyana
-  - parigha
-  - shiva
-  - siddha
-  - sadhya
-  - shubha
-  - shukla
-  - brahma
-  - indra
-  - vaidhriti
+  - id: vishkambha
+    names: [Vishkambha yoga, Viṣkambha yoga, Vishkumbha yoga, विष्कम्भ योग]
+  - id: priti
+    names: [Priti yoga, Prīti yoga, प्रीति योग]
+  - id: ayushman
+    names: [Ayushman yoga, Āyuṣmān yoga, आयुष्मान् योग]
+  - id: saubhagya
+    names: [Saubhagya yoga, Saubhāgya yoga, सौभाग्य योग]
+  - id: shobhana
+    names: [Shobhana yoga, Śobhana yoga, शोभन योग]
+  - id: atiganda
+    names: [Atiganda yoga, Atigaṇḍa yoga, अतिगण्ड योग]
+  - id: sukarma
+    names: [Sukarma yoga, Sukarman yoga, सुकर्मा योग]
+  - id: dhriti
+    names: [Dhriti yoga, Dhṛti yoga, धृति योग]
+  - id: shula
+    ambiguous_names: [Shula yoga, Śūla yoga, शूल योग]
+  - id: ganda
+    names: [Ganda yoga, Gaṇḍa yoga, गण्ड योग]
+  - id: vriddhi
+    names: [Vriddhi yoga, Vṛddhi yoga, वृद्धि योग]
+  - id: dhruva
+    names: [Dhruva yoga, ध्रुव योग]
+  - id: vyaghata
+    names: [Vyaghata yoga, Vyāghāta yoga, व्याघात योग]
+  - id: harshana
+    names: [Harshana yoga, Harṣaṇa yoga, हर्षण योग]
+  - id: vajra
+    ambiguous_names: [Vajra yoga, वज्र योग]
+  - id: siddhi
+    names: [Siddhi yoga, सिद्धि योग]
+  - id: vyatipata
+    names: [Vyatipata yoga, Vyatīpāta yoga, व्यतीपात योग]
+    ambiguous_names: [Vyatipata, Vyatīpāta, व्यतीपात]
+  - id: variyana
+    names: [Variyana yoga, Variyan yoga, Variyān yoga, वरीयान् योग]
+  - id: parigha
+    names: [Parigha yoga, परिघ योग]
+  - id: shiva
+    names: [Shiva yoga, Śiva yoga, शिव योग]
+  - id: siddha
+    names: [Siddha yoga, सिद्ध योग]
+  - id: sadhya
+    names: [Sadhya yoga, Sādhya yoga, साध्य योग]
+  - id: shubha
+    names: [Shubha yoga, Śubha yoga, शुभ योग]
+  - id: shukla
+    names: [Shukla yoga, Śukla yoga, शुक्ल योग]
+    ambiguous_names: [Shukla, Śukla, शुक्ल]
+  - id: brahma
+    names: [Brahma yoga, ब्रह्म योग]
+  - id: indra
+    names: [Indra yoga, Aindra yoga, ऐन्द्र योग]
+  - id: vaidhriti
+    names: [Vaidhriti yoga, Vaidhṛti yoga, वैधृति योग]
 varas:   # index 0 = Sunday; lord of the day
-  - {id: sunday, lord: sun}
-  - {id: monday, lord: moon}
-  - {id: tuesday, lord: mars}
-  - {id: wednesday, lord: mercury}
-  - {id: thursday, lord: jupiter}
-  - {id: friday, lord: venus}
-  - {id: saturday, lord: saturn}
+  - {id: sunday, lord: sun, names: [Sunday, Ravivara, Ravivar, Raviwar, Adityavara, Itwar, Itvar, रविवार, इतवार, आदित्यवार]}
+  - {id: monday, lord: moon, names: [Monday, Somavara, Somvar, Somwar, सोमवार]}
+  - {id: tuesday, lord: mars, names: [Tuesday, Mangalavara, Mangalvar, Mangalwar, Bhaumavara, मंगलवार, भौमवार]}
+  - {id: wednesday, lord: mercury, names: [Wednesday, Budhavara, Budhvar, Budhwar, बुधवार]}
+  - {id: thursday, lord: jupiter, names: [Thursday, Guruvara, Guruvar, Guruwar, Brihaspativara, Brihaspativar, गुरुवार, बृहस्पतिवार]}
+  - {id: friday, lord: venus, names: [Friday, Shukravara, Shukravar, Shukrawar, शुक्रवार]}
+  - {id: saturday, lord: saturn, names: [Saturday, Shanivara, Shanivar, Shaniwar, शनिवार]}

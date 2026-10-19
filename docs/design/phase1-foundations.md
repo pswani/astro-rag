@@ -200,11 +200,11 @@ Kinds in phase 1 (KNW-1):
 |---|---|---|
 | `graha`, `rashi`, `nakshatra` | existing files | 9, 12, 27 |
 | `dignity` | `dignities.yaml` (new) | IDs equal the engine's values: `exalted`, `moolatrikona`, `own`, `great_friend`, `friend`, `neutral`, `enemy`, `great_enemy`, `debilitated` |
-| `bhava` | `bhavas.yaml` (new) | 12 |
+| `bhava`, `bhava_group` | `bhavas.yaml` (new) | 12; kendra, trikona, dusthana, upachaya, maraka, panaphara, apoklima and the four trikonas. The file also holds each house's ordinals and the house words (§3.6) |
 | `tithi`, `paksha`, `vara`, `nitya_yoga`, `karana` | `panchanga.yaml` (restructured, §3.5) | 30, 2, 7, 27, 11 |
 | `varga`, `dasha_system`, `karaka_scheme` | existing files | 16, 1, 1 |
 | `yoga` | `yogas.yaml` (new) | IDs and names only; the curated 20–30 are chosen with the reviewer in phase 3 |
-| `upagraha`, `special_lagna` | `points.yaml` (new) | Gulika, Mandi…; Hora, Ghati, Bhava lagna… |
+| `point`, `upagraha`, `special_lagna` | `points.yaml` (new) | `point:lagna` (the calculation's bare `lagna` subject); Gulika, Mandi…; Hora, Ghati, Bhava lagna… |
 | `deity`, `topic`, `school`, `koota` | `deities.yaml`, `topics.yaml`, `methods.yaml`, `kootas.yaml` (new) | Topics: the KNW-6 list. Schools: the payload enum (design §9.7). Kootas: only what KNW-12 needs (`koota:nadi`) until phase 7 |
 
 ### 3.2 Loading and versions
@@ -236,7 +236,12 @@ Transliteration variants (`Shani`, `Sani`, `Shanee`) are listed explicitly in `n
 5. Files with `meta.status: reviewed` cite sources as `<edition_id>:<locator>` resolving in the source register (§4); `provisional` files may use free text. **Consequence:** no file can be marked reviewed until the BPHS edition is chosen and registered (requirements open question 1), so the phase-1 exit "ontology reviewed" depends on that decision as well as on the reviewer.
 6. The existing calculation table checks (`YamlReferenceData.check`).
 7. **The two readers agree:** every ID the calculation can emit (`refdata.rashi_id`, `nakshatra_id`, `tithi_id`, `karana_id`, `nitya_yoga_id`, `vara`, the dignity values, the varga IDs) is an ontology entity. The two loaders parse the same files independently (the calculation layer may not import `astro.ontology`), and this test keeps them from drifting.
-8. Spacing and spelling variants of compounds (`Gajakesari`, `Gaja Kesari`) must be listed explicitly; no check can find a missing one, so the review pack (§3.8) shows every alias.
+8. Core kinds (graha, rashi, nakshatra, bhava, dignity, panchanga limbs, varga) have at least one Latin and one Devanagari name (KNW-1).
+9. There are 12 houses and their ordinals are unique.
+
+Spacing and spelling variants of compounds (`Gajakesari`, `Gaja Kesari`) must be listed explicitly; no check can find a missing one, so the review pack (§3.8) shows every alias.
+
+Rules 1–9 are implemented in `astro/ontology/load.py`, each with a test that breaks a copy of the data and expects the message.
 
 ### 3.5 Panchanga file restructure
 

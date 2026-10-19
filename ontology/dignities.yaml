@@ -1,0 +1,15 @@
+# Dignities (design §8; KNW-1). The IDs are exactly the values the condition feature emits
+# (`dignity:<id>`, astro.calc.features.condition.DIGNITIES); a check keeps the two in step.
+# The friendship grades apply to a graha in another graha's sign (natural or compound basis per
+# the calculation profile).
+meta: {status: provisional, reviewed_by: null, source: "BPHS ch. 3 (edition: requirements open question 1)"}
+dignities:
+  exalted: {names: [Exalted, Exaltation, Exalted sign, Uccha, Ucca, Ucha, उच्च]}
+  moolatrikona: {names: [Moolatrikona, Mulatrikona, Mūlatrikoṇa, Mula trikona, Moola trikona, मूलत्रिकोण]}
+  own: {names: [Own sign, Own house, Swakshetra, Svakshetra, Svakṣetra, Swagriha, Svagṛha, स्वक्षेत्र, स्वगृह]}
+  great_friend: {names: [Great friend's sign, Adhimitra, Adhi mitra, अधिमित्र]}
+  friend: {names: [Friend's sign, Friendly sign, Mitra kshetra, Mitra rashi, मित्र क्षेत्र]}
+  neutral: {names: [Neutral sign, Sama kshetra, Sama rashi, सम क्षेत्र]}
+  enemy: {names: [Enemy's sign, Enemy sign, Inimical sign, Shatru kshetra, Shatru rashi, शत्रु क्षेत्र]}
+  great_enemy: {names: [Great enemy's sign, Adhishatru, Adhi shatru, अधिशत्रु]}
+  debilitated: {names: [Debilitated, Debilitation, Neecha, Nicha, Nīca, Neech, नीच]}

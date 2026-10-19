@@ -5,6 +5,7 @@
     astro chart --date 1985-03-14 --time 06:42 --place Pune --method bnn --varga-table all
     astro places Springfield
     astro ephemeris fetch
+    astro ontology check | match "Shani in the 10th house" | review-pack
 
 `astro chart` prints the report and also writes it as a PDF (chart-<date>-<time>-<place>.pdf in
 the current directory; --pdf PATH to choose, --no-pdf to skip).
@@ -26,6 +27,7 @@ from pydantic import ValidationError
 
 from astro.calc.core.status import CalcError
 from astro.calc.core.timescale import utc_from_jd
+from astro.cli import ontology as ontology_cli
 from astro.cli.fmt import format_offset
 from astro.normalize.gazetteer import ATTRIBUTION, Place, default_gazetteer, fold
 from astro.resources import ResourceError, astro_home, ephemeris_dir
@@ -140,6 +142,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     e = sub.add_parser("ephemeris", help="manage the Swiss Ephemeris files")
     e.add_argument("action", choices=["fetch", "path"])
+
+    ontology_cli.add_parser(sub)
     return p
 
 
@@ -345,7 +349,8 @@ def main(argv: list[str] | None = None, out=None, err=None) -> int:
     args = build_parser().parse_args(argv)
     try:
         return {"chart": cmd_chart, "places": cmd_places,
-                "ephemeris": cmd_ephemeris}[args.command](args, out, err)
+                "ephemeris": cmd_ephemeris,
+                "ontology": ontology_cli.cmd_ontology}[args.command](args, out, err)
     except ResourceError as e:
         err(str(e))
         return EXIT_ERROR

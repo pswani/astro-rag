@@ -634,14 +634,15 @@ Everything runs locally; no birth data leaves your machine. The PDF, though, is 
 ```sh
 pip install -e ".[dev,oracle]"
 python scripts/fetch_ephemeris.py
-ruff check src tests scripts && lint-imports && pytest
+ruff check src tests scripts && lint-imports && astro ontology check && pytest
 ```
 
 - **Code:** `src/astro/`
   - `calc/`: the deterministic calculation layer; features, solver, ephemeris adapter, profiles.
+  - `ontology/`: loads `ontology/*.yaml` into typed entities, checks it, and matches text to entity IDs.
   - `normalize/`: birth input, time zones, places.
   - `methods/`: method adapters.
   - `cli/`: this command.
-- **Curated data:** `ontology/`, `profiles/`.
+- **Curated data:** `ontology/`, `profiles/`. After editing the ontology, run `astro ontology check`: it refuses unknown IDs, a name given to two entities, and an ambiguous name used as a plain name elsewhere. `astro ontology match "Shani in the 10th house"` shows what the alias matcher finds, and `astro ontology review-pack --out pack.md` renders every entity for the reviewer.
 - **Build documents:** [task list](docs/build/tasks.md), [design notes](docs/build/design-notes.md), [requirements traceability](docs/build/alignment.md), [calculation review and open decisions](docs/design/calc-review.md).
-- **Import rules:** `lint-imports` enforces them. The calculation layer never imports the CLI, normalizer or methods, and only the Swiss Ephemeris adapter imports `swisseph`.
+- **Import rules:** `lint-imports` enforces them. The calculation layer never imports the CLI, normalizer, methods or ontology loader, and only the Swiss Ephemeris adapter imports `swisseph`.

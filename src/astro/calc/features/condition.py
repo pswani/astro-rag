@@ -44,6 +44,9 @@ from astro.calc.profile import COMBUSTIBLE
 from astro.calc.refdata import GRAHAS_7
 
 JUNCTIONS = (0.0, 120.0, 240.0)
+# every value a dignity fact can take (`dignity:<value>`); the ontology must define each one
+DIGNITIES = ("exalted", "moolatrikona", "own", "great_friend", "friend", "neutral", "enemy",
+             "great_enemy", "debilitated")
 
 
 def dignity_of(ctx: ChartContext, graha: str, lon: float,

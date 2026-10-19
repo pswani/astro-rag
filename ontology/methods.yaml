@@ -1,0 +1,19 @@
+# Schools (methods and lineages) as attributed on passages, rule cards and profiles (design §8,
+# §9.7, §12.6; KNW-1, KNW-12, RET-8). The IDs are the passage `school` enum. Bhrigu Nandi Nadi is
+# kept apart from other Nadi texts, and both apart from the Nadi koota (kootas.yaml); bare "Nadi"
+# is ambiguous among the three.
+meta: {status: provisional, reviewed_by: null, source: "design §9.7"}
+schools:
+  parashari: {names: [Parashari, Parāśarī, Parashari jyotish, Parashara system, पाराशरी]}
+  bnn: {names: [Bhrigu Nandi Nadi, Bhṛgu Nandi Nāḍī, BNN, भृगु नंदी नाडी], ambiguous_names: [Nadi, Nāḍī, Naadi, नाडी]}
+  nadi_other: {names: [Nadi astrology, Nadi jyotisha, Nadi jyotish, Naadi astrology, नाडी ज्योतिष], ambiguous_names: [Nadi, Nāḍī, Naadi, नाडी]}
+  jaimini: {names: [Jaimini, Jaimini astrology, Jaimini system, जैमिनी]}
+  kp: {names: [KP, KP astrology, KP system, Krishnamurti Paddhati]}
+  tajika: {names: [Tajika, Tājika, Tajaka, Varshaphal, Varshaphala, ताजिक, वर्षफल]}
+  prashna: {names: [Prashna kundali, Prashna shastra, Horary, Horary astrology, प्रश्न कुंडली], ambiguous_names: [Prashna, प्रश्न]}
+  muhurta: {names: [Muhurta, Muhurtha, Muhurat, Electional astrology, मुहूर्त]}
+  compatibility: {names: [Compatibility, Kundali milan, Kundli milan, Guna milan, Horoscope matching, Ashtakoota, Ashta koota, कुंडली मिलान, गुण मिलान]}
+  lal_kitab: {names: [Lal Kitab, लाल किताब]}
+  modern_indian: {names: [Modern Indian astrology]}
+  western: {names: [Western astrology, Tropical astrology]}
+  general: {}

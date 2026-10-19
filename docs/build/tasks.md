@@ -128,13 +128,15 @@ Still out of scope: functional roles (G-R2 needs a sourced table), Shadbala (G-S
 Design reviewed in four rounds with dry runs (its §8). Build order B → C → A → D, because the register's `school` check uses the ontology.
 
 **F1 Ontology (design B)**
-- [ ] F1.1 `refdata.version` hashes a calculation projection; test: an alias edit leaves it unchanged
-- [ ] F1.2 Restructure `panchanga.yaml` to `{id, names}` entries; `YamlReferenceData` adapted; determinism and oracle tests unchanged
-- [ ] F1.3 `astro.ontology`: Pydantic models per kind, loader, `ontology_version`, `fold()` and the Devanagari-aware tokenizer
-- [ ] F1.4 New files: `bhavas`, `dignities`, `points`, `yogas`, `deities`, `topics`, `methods`, `kootas`; aliases in Sanskrit, IAST, Devanagari, English and Hindi for every entity (`provisional`)
-- [ ] F1.5 Integrity checks 1–8, including alias collisions and the calc/ontology ID agreement; `astro ontology check` in CI
-- [ ] F1.6 `AliasMatcher` (longest match, ambiguous spans, `reserved`, house ordinals); KNW-12 confusable fixtures
-- [ ] F1.7 `astro ontology match`, `astro ontology review-pack`
+- [x] F1.1 `refdata.version` hashes a calculation projection; test: an alias edit leaves it unchanged
+- [x] F1.2 Restructure `panchanga.yaml` to `{id, names}` entries; `YamlReferenceData` adapted; determinism and oracle tests unchanged
+- [x] F1.3 `astro.ontology`: Pydantic models per kind, loader, `ontology_version`, `fold()` and the Devanagari-aware tokenizer
+- [x] F1.4 New files: `bhavas`, `dignities`, `points`, `yogas`, `deities`, `topics`, `methods`, `kootas`; aliases in Sanskrit, IAST, Devanagari, English and Hindi for every entity (`provisional`)
+- [x] F1.5 Integrity checks 1–8, including alias collisions and the calc/ontology ID agreement; `astro ontology check` in CI
+- [x] F1.6 `AliasMatcher` (longest match, ambiguous spans, `reserved`, house ordinals); KNW-12 confusable fixtures
+- [x] F1.7 `astro ontology match`, `astro ontology review-pack`
+
+F1 result: 257 entities in 22 kinds, all `provisional`; 62 tests (the KNW-12 confusables, folding, one mutation per integrity rule, versions). Calculation output for the full 15-feature run is byte-identical before and after (only the reference-data version stamp changed, by design); the PyJHora oracle suite passes. Not done here: the wider KNW-2/KNW-3 attributes (graha nature, gender, guna…; nakshatra deity, gana, yoni…) and Hindi regional variants beyond those listed are content for the reviewer pass.
 
 **F2 Source register (design C)**
 - [ ] F2.1 `sources/register.yaml` (empty) and the Pydantic model with per-status rules
@@ -216,6 +218,7 @@ ruff check src tests scripts && lint-imports && pytest
 | Date | Change |
 |---|---|
 | 2026-10-19 | List created |
+| 2026-10-19 | F1 done: ontology loader, 15 files with aliases, integrity checks, alias matcher, `astro ontology check/match/review-pack`; CI runs the check |
 | 2026-10-19 | F added: phase-1 closure (ontology, register, private store, calc eval harness), from the reviewed [phase1-foundations.md](../design/phase1-foundations.md) |
 | 2026-10-19 | E done: PDF report alongside the terminal output; the North Indian diamond is the default chart style |
 | 2026-10-19 | D done: requirement gaps closed (CALC-2, CALC-3 Placidus, REL-1, TRN-3, DAS-5 partial, VAR-2, §7.10 adapters, INP-1 provenance); 7 review rounds; 412 tests; [alignment.md](alignment.md) |

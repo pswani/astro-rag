@@ -1,30 +1,30 @@
 # 27 equal sectors of 13°20′ from 0° sidereal Aries (design §8). Abhijit is not a sector here.
 meta: {status: provisional, reviewed_by: null, source: "BPHS ch. 46 (Vimshottari lords)"}
 nakshatras:   # index 0 = Ashwini
-  - {id: ashwini, lord: ketu}
-  - {id: bharani, lord: venus}
-  - {id: krittika, lord: sun}
-  - {id: rohini, lord: moon}
-  - {id: mrigashira, lord: mars}
-  - {id: ardra, lord: rahu}
-  - {id: punarvasu, lord: jupiter}
-  - {id: pushya, lord: saturn}
-  - {id: ashlesha, lord: mercury}
-  - {id: magha, lord: ketu}
-  - {id: purva_phalguni, lord: venus}
-  - {id: uttara_phalguni, lord: sun}
-  - {id: hasta, lord: moon}
-  - {id: chitra, lord: mars}
-  - {id: swati, lord: rahu}
-  - {id: vishakha, lord: jupiter}
-  - {id: anuradha, lord: saturn}
-  - {id: jyeshtha, lord: mercury}
-  - {id: mula, lord: ketu}
-  - {id: purva_ashadha, lord: venus}
-  - {id: uttara_ashadha, lord: sun}
-  - {id: shravana, lord: moon}
-  - {id: dhanishta, lord: mars}
-  - {id: shatabhisha, lord: rahu}
-  - {id: purva_bhadrapada, lord: jupiter}
-  - {id: uttara_bhadrapada, lord: saturn}
-  - {id: revati, lord: mercury}
+  - {id: ashwini, lord: ketu, names: [Ashwini, Aśvinī, Asvini, Aswini, अश्विनी]}
+  - {id: bharani, lord: venus, names: [Bharani, Bharaṇī, भरणी]}
+  - {id: krittika, lord: sun, names: [Krittika, Kṛttikā, Kritika, Karthika, कृत्तिका]}
+  - {id: rohini, lord: moon, names: [Rohini, Rohiṇī, रोहिणी]}
+  - {id: mrigashira, lord: mars, names: [Mrigashira, Mṛgaśirā, Mrigashirsha, Mrigasira, Mrigasheersha, मृगशिरा, मृगशीर्ष]}
+  - {id: ardra, lord: rahu, names: [Ardra, Ārdrā, Arudra, आर्द्रा]}
+  - {id: punarvasu, lord: jupiter, names: [Punarvasu, Punarpoosam, पुनर्वसु]}
+  - {id: pushya, lord: saturn, names: [Pushya, Puṣya, Pushyami, Tishya, Pushyam, पुष्य]}
+  - {id: ashlesha, lord: mercury, names: [Ashlesha, Āśleṣā, Aslesha, Ashlesa, Ayilyam, आश्लेषा]}
+  - {id: magha, lord: ketu, names: [Magha, Maghā, मघा]}
+  - {id: purva_phalguni, lord: venus, names: [Purva Phalguni, Pūrva Phalgunī, Purvaphalguni, Pubba, पूर्वाफाल्गुनी, पूर्व फाल्गुनी]}
+  - {id: uttara_phalguni, lord: sun, names: [Uttara Phalguni, Uttarā Phalgunī, Uttaraphalguni, उत्तराफाल्गुनी, उत्तर फाल्गुनी]}
+  - {id: hasta, lord: moon, names: [Hasta, Hastam, हस्त]}
+  - {id: chitra, lord: mars, names: [Chitra, Citrā, Chithira, चित्रा]}
+  - {id: swati, lord: rahu, names: [Swati, Svātī, Svati, स्वाति]}
+  - {id: vishakha, lord: jupiter, names: [Vishakha, Viśākhā, Visakha, Vishaka, विशाखा]}
+  - {id: anuradha, lord: saturn, names: [Anuradha, Anurādhā, अनुराधा]}
+  - {id: jyeshtha, lord: mercury, names: [Jyeshtha, Jyeṣṭhā, Jyestha, Jyeshta, ज्येष्ठा]}
+  - {id: mula, lord: ketu, names: [Mula, Moola, Mūla, Moolam, मूल]}
+  - {id: purva_ashadha, lord: venus, names: [Purva Ashadha, Pūrvāṣāḍhā, Purvashadha, Poorvashada, पूर्वाषाढ़ा, पूर्वाषाढा]}
+  - {id: uttara_ashadha, lord: sun, names: [Uttara Ashadha, Uttarāṣāḍhā, Uttarashadha, Uttarashada, उत्तराषाढ़ा, उत्तराषाढा]}
+  - {id: shravana, lord: moon, names: [Shravana, Śravaṇa, Sravana, Thiruvonam, श्रवण]}
+  - {id: dhanishta, lord: mars, names: [Dhanishta, Dhanishtha, Dhaniṣṭhā, Shravishtha, Avittam, धनिष्ठा]}
+  - {id: shatabhisha, lord: rahu, names: [Shatabhisha, Śatabhiṣā, Satabhisha, Shatabhishak, Sathayam, शतभिषा]}
+  - {id: purva_bhadrapada, lord: jupiter, names: [Purva Bhadrapada, Pūrva Bhādrapadā, Purvabhadra, Purva Bhadra, Poorattathi, पूर्वभाद्रपदा, पूर्वा भाद्रपद]}
+  - {id: uttara_bhadrapada, lord: saturn, names: [Uttara Bhadrapada, Uttara Bhādrapadā, Uttarabhadra, Uttara Bhadra, Uthrattathi, उत्तरभाद्रपदा, उत्तरा भाद्रपद]}
+  - {id: revati, lord: mercury, names: [Revati, Revatī, रेवती]}

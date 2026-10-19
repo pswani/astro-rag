@@ -1,0 +1,28 @@
+# Sensitive points: the Lagna, upagrahas and special lagnas (design §8; KNW-1). Calculations for
+# upagrahas and special lagnas are not built yet (CALC-5, phase 7); the entities exist so text
+# about them is tagged and kept apart from grahas and houses.
+# The calculation names the Lagna with the bare subject `lagna`; it is point:lagna here.
+meta: {status: provisional, reviewed_by: null, source: "BPHS ch. 3–4 (edition: requirements open question 1)"}
+points:
+  lagna: {names: [Lagna, Lagnam, Ascendant, Udaya lagna, Rising sign, लग्न]}
+upagrahas:
+  dhuma: {names: [Dhuma, Dhūma, धूम]}
+  vyatipata: {names: [Vyatipata upagraha], ambiguous_names: [Vyatipata, Vyatīpāta, व्यतीपात]}   # also a nitya yoga
+  parivesha: {names: [Parivesha, Pariveṣa, Paridhi, परिवेष]}
+  indrachapa: {names: [Indrachapa, Indracāpa, Kodanda, इन्द्रचाप]}
+  upaketu: {names: [Upaketu, उपकेतु]}
+  gulika: {names: [Gulika, Gulikā, गुलिक]}
+  mandi: {names: [Mandi upagraha], ambiguous_names: [Mandi, Māndi, मान्दि]}   # "mandi" is also a market
+  kala: {names: [Kala upagraha], ambiguous_names: [Kala, Kāla, काल]}
+  mrityu: {names: [Mrityu upagraha], ambiguous_names: [Mrityu, मृत्यु]}
+  ardhaprahara: {names: [Ardhaprahara, Ardhaprahāra, अर्धप्रहर]}
+  yamaghantaka: {names: [Yamaghantaka, Yamakantaka, यमघण्टक]}
+special_lagnas:
+  hora_lagna: {names: [Hora lagna, Horā lagna, होरा लग्न]}
+  ghati_lagna: {names: [Ghati lagna, Ghatika lagna, घटी लग्न]}
+  bhava_lagna: {names: [Bhava lagna, भाव लग्न]}
+  varnada_lagna: {names: [Varnada lagna, Varṇada lagna, वर्णद लग्न]}
+  sree_lagna: {names: [Sree lagna, Shree lagna, Sri lagna, श्री लग्न]}
+  indu_lagna: {names: [Indu lagna, इन्दु लग्न]}
+  pranapada: {names: [Pranapada, Prāṇapada, प्राणपद]}
+  arudha_lagna: {names: [Arudha lagna, Ārūḍha lagna, Pada lagna, आरूढ लग्न]}
