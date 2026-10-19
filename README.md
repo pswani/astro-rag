@@ -509,6 +509,9 @@ See [Time zone and daylight saving time](#time-zone-and-daylight-saving-time).
 **"out_of_range: the installed ephemeris covers 1800-01-01 until 2400-01-01"**
 The birth is outside the bundled ephemeris files.
 
+**`astro ephemeris fetch` fails with "CERTIFICATE_VERIFY_FAILED"**
+Python could not verify the download server's TLS certificate. `astro` already trusts the `certifi` bundle as well as the system store, so this usually means a proxy or antivirus re-signs HTTPS traffic with its own certificate. Point Python at that certificate with `export SSL_CERT_FILE=/path/to/ca.pem`. On macOS with Python from python.org, also run `/Applications/Python 3.x/Install Certificates.command` once. Make sure you are running a version of `astro` that includes this fix (`git pull`, then `pip install -e ".[geo]"`).
+
 **"ephemeris_unavailable … run `astro ephemeris fetch`"**
 The data files are missing or damaged. Run the command; if you keep them elsewhere, set `ASTRO_EPHE`.
 
