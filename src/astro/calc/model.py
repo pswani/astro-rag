@@ -41,6 +41,20 @@ FACT_KINDS: dict[str, type | tuple[type, ...]] = {
     "transit_distance": float,   # signed degrees transit − natal point
     "dasha_balance": float,      # years of the first MD remaining at birth
     "dasha_sandhi": bool,        # as-of instant within the profile margin of a boundary
+    "dignity": str,              # dignity:exalted | moolatrikona | own | great_friend | …
+    "combust": bool,
+    "sun_distance": float,       # |angle to the Sun| in degrees (combustion input)
+    "graha_yuddha": str,         # none | winner | loser
+    "gandanta": bool,
+    "rashi_sandhi": bool,
+    "aspected_by": tuple,        # graha:* casting a graha drishti on the subject
+    "aspects_signs": tuple,      # rashi:* the subject aspects
+    "conjunct_with": tuple,      # graha:* conjunct with the subject
+    "period_lord": str,          # graha:* ruling a dasha level at the as-of instant
+    "lord_houses": tuple,        # bhava:* (Lagna frame) the subject rules
+    "context_refs": tuple,       # IDs of the facts and relations that describe the subject
+    "from_md_lord": int,         # houses from the MD lord to the subject (inclusive)
+    "md_lord_friendship": str,   # natural friendship of the subject towards the MD lord
 }
 
 
@@ -103,7 +117,8 @@ class Relation(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     id: str
-    kind: Literal["parivartana", "dispositor", "friendship", "bnn_link", "conjunction"]
+    kind: Literal["parivartana", "dispositor", "friendship", "bnn_link", "conjunction",
+                  "aspect", "graha_yuddha"]
     source: str
     target: str
     system: str

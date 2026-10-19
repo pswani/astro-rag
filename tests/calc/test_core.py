@@ -85,7 +85,10 @@ def test_julian_gregorian_switch():
 @given(st.datetimes(min_value=datetime(1, 1, 2), max_value=datetime(9998, 12, 30),
                     timezones=st.just(UTC)))
 def test_utc_round_trip(dt):
-    assert abs(T.utc_from_jd(T.jd_from_utc(dt)) - dt) <= timedelta(microseconds=50)
+    jd = T.jd_from_utc(dt)
+    # a double's resolution at this JD (≈ 80 µs near JD 4.2e6), plus rounding
+    tol = timedelta(microseconds=2 + abs(jd) * 86400e6 * 2.0 ** -52)
+    assert abs(T.utc_from_jd(jd) - dt) <= tol
 
 
 def test_jd_from_utc_rejects_naive_and_handles_offsets():

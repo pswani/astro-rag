@@ -19,6 +19,16 @@ lunar_month: amanta
 karaka_scheme: parashari
 retro_in_previous_sign: false
 eclipse: {orb_deg: 3.0}
+dignity: {scheme: bphs_v1, friendship_basis: compound, nodes: not_modelled}
+combustion:
+  measure: longitude
+  orbs: {moon: 12, mars: 17, mercury: 14, mercury_retro: 12, jupiter: 11, venus: 10,
+         venus_retro: 8, saturn: 15}
+graha_yuddha: {orb_deg: 1.0, bodies: [mars, mercury, jupiter, venus, saturn], winner: north_latitude}
+gandanta: {arc_deg: 3.3333333333333335}   # one pada either side of a water–fire junction
+sandhi: {arc_deg: 1.0}                    # either side of a sign boundary
+aspects: {system: parashari_sign, nodes: none}
+conjunction: {mode: same_sign}
 sensitivity:
   step_minutes: {lagna: 2, moon: 60, sun: 720, mercury: 720, venus: 720, mars: 720,
                  jupiter: 2880, saturn: 2880, mean_node: 2880, true_node: 360}
@@ -39,3 +49,10 @@ provisional:
   - dasha.year_days
   - dasha.sandhi_margin_days
   - eclipse.orb_deg
+  - dignity.friendship_basis
+  - combustion.orbs
+  - graha_yuddha.winner
+  - gandanta.arc_deg
+  - sandhi.arc_deg
+  - aspects.nodes
+  - conjunction.mode

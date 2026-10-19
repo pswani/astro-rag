@@ -1,0 +1,16 @@
+# Method profile (design §7.10). Status stays draft until rule cards and sources are reviewed.
+id: parashari
+school: parashari
+lineage: bphs
+description: Classical Vedic natal astrology (BPHS lineage), one declared profile
+status: draft
+calc_profiles: [parashari_v1]
+default_calc_profile: parashari_v1
+supported_topics: []          # filled by reviewed topic maps (phase 3)
+rule_families: []             # filled by reviewed rule cards (phase 3)
+core_sources: []              # requirements open question 1
+optional_inputs: []
+known_gaps:
+  - functional benefic/malefic table per lagna (calc-review G-R2)
+  - Shadbala and Bhava Bala (G-S2)
+  - "lunar calendar (month, samvatsara, ritu): G-PN2"

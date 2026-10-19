@@ -85,6 +85,60 @@ class Eclipse(_Strict):
     orb_deg: float = Field(gt=0, le=30)
 
 
+class Dignity(_Strict):
+    # bphs_v1: exaltation and debilitation by sign, moolatrikona degree ranges carved out of the
+    # exaltation or own sign (Moon in Taurus, Mercury in Virgo), then own sign, then the
+    # relationship to the sign lord (calc-review G-C5)
+    scheme: Literal["bphs_v1"] = "bphs_v1"
+    friendship_basis: Literal["natural", "compound"]
+    nodes: Literal["not_modelled"] = "not_modelled"   # node dignities are disputed
+
+
+COMBUSTIBLE = ("moon", "mars", "mercury", "jupiter", "venus", "saturn")
+
+
+class Combustion(_Strict):
+    measure: Literal["longitude"] = "longitude"       # G-C8
+    orbs: dict[str, float]                            # planet or planet_retro → degrees
+
+    @model_validator(mode="after")
+    def _complete(self) -> Combustion:
+        missing = [g for g in COMBUSTIBLE if g not in self.orbs]
+        allowed = {*COMBUSTIBLE, *(f"{g}_retro" for g in COMBUSTIBLE)}
+        unknown = sorted(set(self.orbs) - allowed)
+        if missing or unknown:
+            raise ValueError(f"combustion orbs: missing {missing}, unknown {unknown}")
+        if any(not 0 < v <= 30 for v in self.orbs.values()):
+            raise ValueError("combustion orbs must be in (0, 30] degrees")
+        return self
+
+
+class GrahaYuddha(_Strict):
+    orb_deg: float = Field(gt=0, le=5)
+    bodies: tuple[Literal["mars", "mercury", "jupiter", "venus", "saturn"], ...]
+    winner: Literal["north_latitude", "lesser_longitude"]   # G-C6
+
+
+class Arc(_Strict):
+    arc_deg: float = Field(gt=0, le=15)
+
+
+class Aspects(_Strict):
+    system: Literal["parashari_sign"] = "parashari_sign"   # G-R1
+    nodes: Literal["none", "seventh", "fifth_seventh_ninth"]
+
+
+class Conjunction(_Strict):
+    mode: Literal["same_sign", "orb"]
+    orb_deg: float | None = Field(default=None, gt=0, le=30)
+
+    @model_validator(mode="after")
+    def _orb(self) -> Conjunction:
+        if (self.mode == "orb") != (self.orb_deg is not None):
+            raise ValueError("conjunction.orb_deg is required for mode 'orb' and only then")
+        return self
+
+
 class Sensitivity(_Strict):
     # sampling steps in minutes for the boundary solver (design-notes §5)
     step_minutes: dict[str, float]
@@ -96,7 +150,7 @@ class CalcProfile(_Strict):
     zodiac: Literal["sidereal"]
     ayanamsa: Ayanamsa
     nodes: Nodes
-    house_system: Literal["whole_sign", "sripati"]
+    house_system: Literal["whole_sign", "sripati", "placidus"]
     position: Position = Position()
     vargas: Vargas = Vargas()
     dasha: DashaCfg
@@ -105,6 +159,13 @@ class CalcProfile(_Strict):
     karaka_scheme: Literal["parashari", "bnn"] = "parashari"
     retro_in_previous_sign: bool = False
     eclipse: Eclipse
+    dignity: Dignity
+    combustion: Combustion
+    graha_yuddha: GrahaYuddha
+    gandanta: Arc
+    sandhi: Arc
+    aspects: Aspects
+    conjunction: Conjunction
     sensitivity: Sensitivity
     ephemeris: EphemerisCfg
     time: TimeCfg

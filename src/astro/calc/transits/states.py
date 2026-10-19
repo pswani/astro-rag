@@ -1,9 +1,10 @@
 """Named transit states as intervals (TRN-3 subset; design §7.8).
 
 Sade Sati (Saturn in the 12th, 1st or 2nd sign from the natal Moon, with phase), Ashtama Shani
-(8th), Kantaka Shani (4th, 7th, 10th) and Jupiter's house from the Moon. Retrograde re-entries
-produce separate intervals. The Jupiter–Saturn double transit and the Rahu–Ketu axis wait for
-decision 4 (calc-review G-R1).
+(8th), Kantaka Shani (4th, 7th, 10th), Jupiter's house from the Moon, the Jupiter–Saturn double
+transit (a sign both occupy or aspect, by the profile's sign-based graha drishti) and the
+Rahu–Ketu axis over natal points (a node in the sign of a natal point). Retrograde re-entries
+produce separate intervals.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from astro.calc.core.angles import SIGN_SPAN, houses_apart, sign_index
 from astro.calc.core.status import CalcError, Reason, Status
 from astro.calc.core.timescale import utc_from_jd
 from astro.calc.engine import Deps, FeatureRequest
+from astro.calc.features.aspects import aspect_offsets
 from astro.calc.model import FeatureResult, TransitEvent
 from astro.calc.solver import crossings
 from astro.calc.transits.common import check_window, window
@@ -64,12 +66,13 @@ class TransitStates:
         sat = [(a, b, houses_apart(moon_sign, s))
                for a, b, s in sign_segments(ctx, "saturn", t0, t1)]
 
-        def emit(state: str, body: str, pieces, detail_fn) -> None:
+        def emit(state: str, body: str, pieces, detail_fn, key: str = "") -> None:
             for a, b, v in merge(pieces):
                 if v is None:
                     continue
+                suffix = f"/{key}" if key else ""
                 events.append(TransitEvent(
-                    id=f"{ctx.chart_id}/state/{state}/{utc_from_jd(a).isoformat()}",
+                    id=f"{ctx.chart_id}/state/{state}{suffix}/{utc_from_jd(a).isoformat()}",
                     kind="state", body=f"graha:{body}", target=f"state:{state}",
                     start_utc=utc_from_jd(a), end_utc=utc_from_jd(b),
                     detail={**detail_fn(v), "clipped_start": a == t0, "clipped_end": b == t1},
@@ -86,6 +89,39 @@ class TransitStates:
         jup = [(a, b, houses_apart(moon_sign, s))
                for a, b, s in sign_segments(ctx, "jupiter", t0, t1)]
         emit("jupiter_from_moon", "jupiter", jup, lambda v: {"house_from_moon": v})
+
+        # Jupiter–Saturn double transit: signs both occupy or aspect
+        natal = deps.get_one("positions")
+        lagna_f = natal.fact("sign", "lagna")
+        lagna_sign = None if lagna_f.value is None else ctx.refdata.rashi_index(lagna_f.value)
+        jseg = sign_segments(ctx, "jupiter", t0, t1)
+        sseg = sign_segments(ctx, "saturn", t0, t1)
+        edges = sorted({t0, t1, *(a for a, _, _ in jseg), *(a for a, _, _ in sseg)})
+        sign_at = lambda segs, t: next(s for a, b, s in segs if a <= t < b)  # noqa: E731
+        both: dict[int, list[tuple[float, float, Any]]] = {s: [] for s in range(12)}
+        for a, b in zip(edges, edges[1:], strict=False):
+            mid = (a + b) / 2
+            js, ss = sign_at(jseg, mid), sign_at(sseg, mid)
+            jset = {js, *((js + o - 1) % 12 for o in aspect_offsets(ctx, "jupiter"))}
+            sset = {ss, *((ss + o - 1) % 12 for o in aspect_offsets(ctx, "saturn"))}
+            for s in range(12):
+                both[s].append((a, b, True if s in jset & sset else None))
+        for s, pieces in both.items():
+            emit("double_transit", "jupiter", pieces, lambda v, s=s: {
+                "sign": ctx.refdata.rashi_id(s), "house_from_moon": houses_apart(moon_sign, s),
+                "house_from_lagna": None if lagna_sign is None else houses_apart(lagna_sign, s),
+            }, key=ctx.refdata.rashi_id(s))
+
+        # Rahu–Ketu axis over natal points (sign-based)
+        rseg = sign_segments(ctx, "rahu", t0, t1)
+        for f in natal.facts:
+            if f.kind != "sign" or f.frame is not None or f.value is None:
+                continue
+            ps = ctx.refdata.rashi_index(f.value)
+            pieces = [(a, b, "rahu" if s == ps else "ketu" if (s + 6) % 12 == ps else None)
+                      for a, b, s in rseg]
+            emit("node_axis", "rahu", pieces, lambda v, subj=f.subject: {
+                "natal_point": subj, "node": f"graha:{v}"}, key=f.subject)
         events.sort(key=lambda e: (e.start_utc, e.target or ""))
         return FeatureResult(feature_id=self.id, status=Status.OK, events=tuple(events),
                              provenance={"natal_moon_sign": moon.value,

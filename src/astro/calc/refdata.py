@@ -13,6 +13,7 @@ from typing import Literal, Protocol
 from ruamel.yaml import YAML
 
 from astro.calc.core.canonical import content_hash
+from astro.calc.core.files import VersionedCache, stamp
 
 Friendship = Literal["friend", "neutral", "enemy"]
 
@@ -21,11 +22,32 @@ GRAHAS_9 = (*GRAHAS_7, "rahu", "ketu")
 
 
 @dataclass(frozen=True)
+class Dignities:
+    exaltation: tuple[int, float]          # (sign, degree)
+    debilitation: tuple[int, float]
+    moolatrikona: tuple[int, float, float]  # (sign, from, to)
+
+
+@dataclass(frozen=True)
 class VargaSpec:
     id: str
     divisions: int
-    rule: Literal["same", "by_parity", "by_modality"]
-    offsets: dict[str, int]  # keys: odd/even or movable/fixed/dual
+    rule: Literal["same", "by_parity", "by_modality", "by_element", "table"]
+    offsets: dict[str, int]  # keys: odd/even, movable/fixed/dual or fire/earth/air/water
+    basis: Literal["relative", "absolute"] = "relative"
+    step: int = 1
+    table: dict[str, tuple[tuple[float, int], ...]] | None = None  # parity → (end°, sign)
+
+    def boundaries(self) -> list[float]:
+        """Absolute longitudes of every part boundary of a table varga (for sensitivity);
+        equal-part vargas use the part width instead."""
+        if self.table is None:
+            raise ValueError(f"{self.id} has equal parts: use 30 / divisions")
+        out = []
+        for s in range(12):
+            parts = self.table["odd" if s % 2 == 0 else "even"]
+            out += [s * 30.0] + [s * 30.0 + end for end, _ in parts[:-1]]
+        return out
 
 
 class ReferenceData(Protocol):
@@ -35,6 +57,7 @@ class ReferenceData(Protocol):
     def rashi_index(self, rashi: str) -> int: ...
     def sign_lord(self, sign: int) -> str: ...
     def own_signs(self, graha: str) -> tuple[int, ...]: ...
+    def dignities(self, graha: str) -> Dignities | None: ...
     def nakshatra_id(self, index: int) -> str: ...
     def nakshatra_lord(self, index: int) -> str: ...
     def natural_friendship(self, graha: str, other: str) -> Friendship | None: ...
@@ -119,15 +142,24 @@ class YamlReferenceData:
                 self._need_graha(item["lord"], f"dasha {name}")
             if abs(sum(i["years"] for i in seq) - sysd["total_years"]) > 1e-9:
                 raise IntegrityError(f"dasha {name}: years do not sum to total")
-        for vid, spec in self._vargas.items():
+        for vid in self._vargas:
             self.varga_spec(vid)
-            if spec["parts"] != "equal":
-                raise IntegrityError(f"{vid}: only equal parts are supported so far")
         for scheme, data in self._karakas.items():
             for g in data["roles"]:
                 self._need_graha(g, f"karaka scheme {scheme}")
             for g in data.get("native", {}).values():
                 self._need_graha(g, f"karaka scheme {scheme}")
+        for g in GRAHAS_7:
+            d = self.dignities(f"graha:{g}")
+            if d is None:
+                raise IntegrityError(f"{g}: exaltation, debilitation and moolatrikona needed")
+            if d.debilitation[0] != (d.exaltation[0] + 6) % 12 or \
+                    d.debilitation[1] != d.exaltation[1]:
+                raise IntegrityError(f"{g}: debilitation must oppose exaltation")
+            mt_sign, lo, hi = d.moolatrikona
+            if mt_sign not in (*self.own_signs(f"graha:{g}"), d.exaltation[0]) or \
+                    not 0 <= lo < hi <= 30:
+                raise IntegrityError(f"{g}: moolatrikona must lie in an own or exaltation sign")
         # nakshatra lords follow the Vimshottari order from Ashwini
         vim = [i["lord"] for i in self._dashas["vimshottari"]["sequence"]]
         if [n["lord"] for n in self._naks] != vim * 3:
@@ -152,6 +184,16 @@ class YamlReferenceData:
         return tuple(self._rashi_index[_strip(s, "rashi")]
                      for s in self._grahas[g].get("own_signs", []))
 
+    def dignities(self, graha: str) -> Dignities | None:
+        a = self._grahas[_strip(graha, "graha")]
+        if not all(k in a for k in ("exaltation", "debilitation", "moolatrikona")):
+            return None
+        ri = lambda s: self._rashi_index[_strip(s, "rashi")]  # noqa: E731
+        mt = a["moolatrikona"]
+        return Dignities((ri(a["exaltation"]["sign"]), float(a["exaltation"]["degree"])),
+                         (ri(a["debilitation"]["sign"]), float(a["debilitation"]["degree"])),
+                         (ri(mt["sign"]), float(mt["from"]), float(mt["to"])))
+
     def nakshatra_id(self, index: int) -> str:
         return "nakshatra:" + self._naks[index]["id"]
 
@@ -174,13 +216,28 @@ class YamlReferenceData:
 
     def varga_spec(self, varga: str) -> VargaSpec:
         s = self._vargas[varga]
+        n = int(s["divisions"])
+        if s["parts"] == "table":
+            table = {}
+            for parity in ("odd", "even"):
+                rows = tuple((float(e), int(sign)) for e, sign in s["table"][parity])
+                ends = [e for e, _ in rows]
+                if ends != sorted(ends) or ends[-1] != 30 or not all(0 <= x < 12 for _, x in rows):
+                    raise IntegrityError(f"{varga}: table parts must end at 30° in order")
+                table[parity] = rows
+            return VargaSpec(varga, n, "table", {}, table=table)
+        if s["parts"] != "equal":
+            raise IntegrityError(f"{varga}: parts must be equal or table")
         start = dict(s["start"])
         rule = start.pop("rule")
+        basis = start.pop("basis", "relative")
         need = {"same": set(), "by_parity": {"odd", "even"},
-                "by_modality": {"movable", "fixed", "dual"}}.get(rule)
-        if need is None or set(start) != need:
+                "by_modality": {"movable", "fixed", "dual"},
+                "by_element": {"fire", "earth", "air", "water"}}.get(rule)
+        if need is None or set(start) != need or basis not in ("relative", "absolute"):
             raise IntegrityError(f"{varga}: bad start rule {s['start']}")
-        return VargaSpec(varga, int(s["divisions"]), rule, {k: int(v) for k, v in start.items()})
+        return VargaSpec(varga, n, rule, {k: int(v) for k, v in start.items()}, basis=basis,
+                         step=int(s.get("step", 1)))
 
     def varga_ids(self) -> tuple[str, ...]:
         return tuple(self._vargas)
@@ -208,3 +265,13 @@ class YamlReferenceData:
     def native_karaka(self, scheme: str, gender: str) -> str | None:
         g = self._karakas[scheme].get("native", {}).get(gender)
         return "graha:" + g if g else None
+
+
+_REFDATA = VersionedCache()
+
+
+def load_refdata(directory: Path) -> YamlReferenceData:
+    """The ontology for `directory`, loaded and integrity-checked once per version of its
+    files: an edited file (size or mtime) is reloaded, and only the latest is kept."""
+    d = Path(directory).resolve()
+    return _REFDATA.get(d, stamp(d), lambda: YamlReferenceData(d))

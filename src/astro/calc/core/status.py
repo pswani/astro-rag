@@ -20,6 +20,7 @@ class Reason(StrEnum):
     UNSUPPORTED_FEATURE = "unsupported_feature"
     UNSUPPORTED_CALENDAR = "unsupported_calendar"
     UNSUPPORTED_PROFILE = "unsupported_profile"
+    UNSUPPORTED_METHOD = "unsupported_method"
     UNSUPPORTED_WINDOW = "unsupported_window"
     SENSITIVE_BIRTH_TIME = "sensitive_birth_time"
     DEPENDENCY_CYCLE = "dependency_cycle"
