@@ -10,11 +10,16 @@ from astro.calc.features.panchanga import Panchanga
 from astro.calc.features.positions import Positions
 from astro.calc.features.relations import Relations
 from astro.calc.features.vargas import Vargas
+from astro.calc.transits.eclipses import Eclipses
+from astro.calc.transits.events import TransitEvents
+from astro.calc.transits.positions import TransitPositions
+from astro.calc.transits.states import TransitStates
 
 
 def default_features() -> list:
     return [Positions(), Houses(), Relations(), Friendship(), Vargas(), Panchanga(),
-            Vimshottari(), DashaActive()]
+            Vimshottari(), DashaActive(), TransitPositions(), TransitEvents(), TransitStates(),
+            Eclipses()]
 
 
 def default_engine(cache: CachePort | None = None, extra: list | None = None) -> Engine:

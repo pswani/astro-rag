@@ -64,12 +64,14 @@ Undecided conventions (calc-review §5, decisions 2–4) are implemented as **pr
 
 ## B6 Later-phase pure features
 
-- [ ] B6.1 Transit positions at the as-of date relative to the natal Lagna, Moon and planets (TRN-1)
-- [ ] B6.2 Event search: sign/nakshatra/pada ingresses, stations, conjunctions with natal points, returns; all loop crossings (TRN-2)
-- [ ] B6.3 Named states as intervals: Sade Sati with phase, Ashtama and Kantaka Shani, Jupiter from the Moon (TRN-3 subset; double transit waits for G-R1)
-- [ ] B6.4 Eclipses with natal contact within an orb (TRN-5)
-- [ ] B6.5 Birth-time sensitivity: Lagna sign/nakshatra, Moon nakshatra/pada, house placements (whole-sign), D9/D10 Lagna, dasha boundaries (CALC-7)
-- [ ] B6.6 BNN relations: trines, 2nd, 12th, 7th from each graha, exchanges, conjunction by sign, retro-in-previous-sign variant; BNN karaka roles (SCH-BNN-1, SCH-BNN-2)
+- [x] B6.1 Transit positions at the as-of date relative to the natal Lagna, Moon and planets (TRN-1)
+- [x] B6.2 Event search: sign/nakshatra/pada ingresses, stations, conjunctions with natal points, returns; all loop crossings (TRN-2)
+- [x] B6.3 Named states as intervals: Sade Sati with phase, Ashtama and Kantaka Shani, Jupiter from the Moon (TRN-3 subset)
+- [!] B6.3b Jupiter–Saturn double transit and Rahu–Ketu axis over natal points — wait for decision 4 (aspect system, G-R1)
+- [x] B6.4 Eclipses with natal contact within an orb (TRN-5)
+- [x] B6.5 Birth-time sensitivity: Lagna sign/nakshatra, Moon nakshatra/pada, house placements (whole-sign), D9/D10 Lagna, dasha boundaries (CALC-7) — built into each feature; Sripati placements use a 2-min Lagna grid (margins ±1 step, G-C9)
+- [x] B6.6 BNN relations: trines, 2nd, 12th, 7th from each graha, exchanges, conjunction by sign, retro-in-previous-sign variant; BNN karaka roles (SCH-BNN-1, SCH-BNN-2) — nodes excluded from the retro variant, recorded in provenance for the reviewer
+- [x] B6.7 BNN transit triggers: Jupiter, Saturn and the nodes entering the sign of, or a trine to, a natal planet (TRN-6; added during the build)
 
 ## B7 Verification
 
@@ -83,5 +85,6 @@ Undecided conventions (calc-review §5, decisions 2–4) are implemented as **pr
 | Date | Change |
 |---|---|
 | 2026-10-19 | List created |
+| 2026-10-19 | B6 done (B6.3b blocked on G-R1). Real-data fixture: Saturn crosses natal Mercury three times in 2026–27 (TRN-2 acceptance); Sade Sati phases verified on a synthetic ephemeris |
 | 2026-10-19 | B4, B5.1–B5.7, B7.2 done. Oracle findings: PyJHora defaults to true geometric positions (Sun ~20″ from apparent), the true node and a per-chart *true* sidereal year; `drik.dhasavarga` uses cyclic (parivritti) D10, so `charts.divisional_chart(chart_method=1)` is the Parashari oracle. Recorded as G-C12 and G-D4 in calc-review |
 | 2026-10-19 | B0–B3 done. Findings fixed during the loop: exact boundary indexing (Hypothesis found 30° → wrong pada via `floor(λ / (10/3))`); contact detection uses adjacent monotone pieces instead of a 1-day window; Swiss Ephemeris coverage start corrected to JD 2378497.0 (2378496.5 already falls back to Moshier); nutation does not change sidereal positions (G-C4 downgraded) |
