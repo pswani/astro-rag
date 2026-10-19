@@ -5,12 +5,16 @@ text items in points. Text is fitted inside each house so nothing overlaps or le
 which the tests check geometrically. reportlab only paints the result.
 
 Fonts: Bitstream Vera, which ships with reportlab, is embedded so the file looks the same
-everywhere. Characters Vera lacks are replaced (′ → ', → → –) rather than drawn as boxes.
+everywhere (ASTRO_PDF_FONT names another TrueType font). Characters the font lacks are
+replaced (′ → ', → → –) rather than drawn as boxes.
 """
 
 from __future__ import annotations
 
+import functools
+import hashlib
 import os
+import tempfile
 import unicodedata
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -55,7 +59,6 @@ from astro.cli.render import (
 from astro.cli.report import ChartReport
 from astro.normalize.gazetteer import ATTRIBUTION
 
-FONT, BOLD = "AstroSans", "AstroSans-Bold"
 _FONT_DIR = Path(reportlab.__file__).parent / "fonts"
 
 INK = colors.HexColor("#1f2a44")
@@ -70,10 +73,30 @@ MARGIN = 40.0
 FRAME_W = PAGE_W - 2 * MARGIN
 
 
-def register_fonts() -> None:
-    if FONT not in pdfmetrics.getRegisteredFontNames():
-        pdfmetrics.registerFont(TTFont(FONT, str(_FONT_DIR / "Vera.ttf")))
-        pdfmetrics.registerFont(TTFont(BOLD, str(_FONT_DIR / "VeraBd.ttf")))
+def font_files() -> tuple[str, str]:
+    """Regular and bold TrueType files: ASTRO_PDF_FONT (and ASTRO_PDF_FONT_BOLD, default the
+    same file) for scripts Vera lacks, such as Cyrillic or Devanagari; else Vera."""
+    regular = os.environ.get("ASTRO_PDF_FONT")
+    if regular:
+        return regular, os.environ.get("ASTRO_PDF_FONT_BOLD") or regular
+    return str(_FONT_DIR / "Vera.ttf"), str(_FONT_DIR / "VeraBd.ttf")
+
+
+def fonts() -> tuple[str, str]:
+    """The registered names of the regular and bold fonts. reportlab never replaces a font
+    registered under a name, so each file gets a name of its own."""
+    return _register(font_files())
+
+
+@functools.cache
+def _register(files: tuple[str, str]) -> tuple[str, str]:
+    names = []
+    for f in files:
+        name = "AstroSans-" + hashlib.sha1(f.encode()).hexdigest()[:10]
+        if name not in pdfmetrics.getRegisteredFontNames():
+            pdfmetrics.registerFont(TTFont(name, f))
+        names.append(name)
+    return names[0], names[1]
 
 
 _REPLACE = {"′": "'", "″": '"', "→": "–", "◀": "<", "★": "*", "−": "-", "…": "..."}
@@ -82,12 +105,13 @@ _REPLACE = {"′": "'", "″": '"', "→": "–", "◀": "<", "★": "*", "−":
 def clean(text: str) -> str:
     """Text the embedded font can draw: replacements for the few symbols it lacks, accents
     dropped from letters it lacks, and '?' for anything else."""
-    register_fonts()
-    cmap = pdfmetrics.getFont(FONT).face.charToGlyph
+    cmap = pdfmetrics.getFont(fonts()[0]).face.charToGlyph
     out = []
     for ch in text:
         if ord(ch) in cmap or ch in "\n\t":
             out.append(ch)
+        elif unicodedata.combining(ch):  # a mark the font lacks: the letter stays plain
+            continue
         elif ch in _REPLACE:
             out.append(_REPLACE[ch])
         else:
@@ -98,8 +122,17 @@ def clean(text: str) -> str:
 
 
 def width(text: str, size: float, bold: bool = False) -> float:
-    register_fonts()
-    return pdfmetrics.stringWidth(text, BOLD if bold else FONT, size)
+    regular, heavy = fonts()
+    return pdfmetrics.stringWidth(text, heavy if bold else regular, size)
+
+
+def truncate(text: str, size: float, room: float, bold: bool = False) -> str:
+    """`text`, shortened with '...' if it is wider than `room`."""
+    if width(text, size, bold) <= room:
+        return text
+    while text and width(text + "...", size, bold) > room:
+        text = text[:-1]
+    return text.rstrip() + "..."
 
 
 # -- chart geometry ---------------------------------------------------------------------------
@@ -351,8 +384,10 @@ def south_layout(by_sign: dict[int, list[str]], lagna: int | None, size: float,
     y = size / 2 + sum(s * 1.4 for s in sizes[:len(centre)]) / 2
     for i, text in enumerate(centre):
         s = sizes[min(i, len(sizes) - 1)]
-        while width(text, s, i == 0) > 2 * cell - 8 and s > 5:
+        room = 2 * cell - 8
+        while width(text, s, i == 0) > room and s > 6:
             s -= 0.5
+        text = truncate(text, s, room, i == 0)
         y -= s * 1.4
         d.centre.append(TextItem(text, size / 2 - width(text, s, i == 0) / 2, y + 0.3 * s, s,
                                  bold=i == 0))
@@ -368,6 +403,7 @@ class ChartFlowable(Flowable):
 
     def draw(self) -> None:
         c, d = self.canv, self.drawing
+        FONT, BOLD = fonts()
         c.saveState()
         c.setFillColor(INK)
         c.setFont(BOLD, 10)
@@ -402,7 +438,8 @@ class ChartFlowable(Flowable):
 
 
 def _draw_text(c, t: TextItem) -> None:
-    c.setFont(BOLD if t.bold else FONT, t.size)
+    regular, heavy = fonts()
+    c.setFont(heavy if t.bold else regular, t.size)
     c.setFillColor(MUTED if t.color == "muted" else INK)
     c.drawString(t.x, t.y, t.text)
 
@@ -428,7 +465,7 @@ def chart_drawing(report: ChartReport, varga: str, style: str,
 # -- document ---------------------------------------------------------------------------------
 
 def _styles() -> dict[str, ParagraphStyle]:
-    register_fonts()
+    FONT, BOLD = fonts()
     base = ParagraphStyle("body", fontName=FONT, fontSize=8.5, leading=11, textColor=INK,
                           alignment=TA_LEFT)
     return {
@@ -543,7 +580,9 @@ def story(report: ChartReport, style: str = "north") -> list[Flowable]:
     out: list[Flowable] = [_p("Natal chart", st["title"]), _p(f"{when}  ·  {place}",
                                                              st["subtitle"]), Spacer(1, 8)]
     fields = header_fields(report)
-    kv = RLTable([[_p(k, st["key"]), _p(v, st["body"])] for k, v in fields],
+    # the text aligns with runs of spaces, which a paragraph would collapse
+    kv = RLTable([[_p(k, st["key"]), _p(v.replace("   ", "  ·  "), st["body"])]
+                  for k, v in fields],
                  colWidths=[62, FRAME_W - 62], hAlign="LEFT")
     kv.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"),
                             ("LEFTPADDING", (0, 0), (-1, -1), 0),
@@ -559,7 +598,7 @@ def story(report: ChartReport, style: str = "north") -> list[Flowable]:
         body += [Spacer(1, 3)] + [_p(n, st["small"]) for n in [*t.notes, *extra]]
         out.extend(_section(title, body, st))
 
-    add("Planets", planet_data(report), right=(5,))
+    add("Planets", planet_data(report), right=(5, 6))
     add("Dignity and condition", condition_data(report))
     add("Aspects cast (graha drishti)", aspects_data(report))
     if (vt := varga_data(report)) is not None:
@@ -585,7 +624,6 @@ def story(report: ChartReport, style: str = "north") -> list[Flowable]:
         items.append(ATTRIBUTION)
     out.extend(_section("Notes", [_p(f"•  {n}", st["small"]) for n in items], st))
     return out
-    return out
 
 
 def _version() -> str:
@@ -596,9 +634,9 @@ def _version() -> str:
 
 
 def write_pdf(report: ChartReport, path: str | os.PathLike, style: str = "north") -> Path:
-    """Write the report to `path` and return it. The bytes depend only on the report (no
-    timestamps), so the same chart gives the same file."""
-    register_fonts()
+    """Write the report to `path` and return it. No timestamps are embedded: the same chart and
+    `as_of` give the same bytes."""
+    FONT, _ = fonts()
     path = Path(path)
     req = report.request
     title = f"Natal chart {req.year:04d}-{req.month:02d}-{req.day:02d}"
@@ -613,7 +651,9 @@ def write_pdf(report: ChartReport, path: str | os.PathLike, style: str = "north"
         c.drawRightString(PAGE_W - MARGIN, MARGIN / 2, f"page {doc.page}")
         c.restoreState()
 
-    tmp = path.with_name(path.name + ".part")
+    fd, name = tempfile.mkstemp(prefix=path.name + ".", suffix=".part", dir=path.parent)
+    os.close(fd)
+    tmp = Path(name)
     doc = SimpleDocTemplate(str(tmp), pagesize=A4, leftMargin=MARGIN, rightMargin=MARGIN,
                             topMargin=MARGIN, bottomMargin=MARGIN, title=title,
                             author="astro", subject="Vedic natal chart", creator="astro",

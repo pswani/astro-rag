@@ -415,7 +415,11 @@ Every `astro chart` run also writes an A4 PDF, unless you pass `--no-pdf` (or `-
 - the notes, including the provisional settings and the GeoNames attribution;
 - a footer with the program version, method, profile and page number.
 
-The default file name has the birth date, the clock time (`notime` without one) and the place, for example `chart-1985-03-14-0642-pune.pdf` or `chart-1990-07-15-0410-33.87s151.21e.pdf` for coordinates. An existing file with that name is replaced. The same chart always gives byte-identical files (no timestamps are embedded). The text uses the Bitstream Vera font, which ships with reportlab and is embedded in the file. Symbols the font lacks are replaced, so `28°01′34″` prints as `28°01'34"`.
+The default file name has the birth date, the clock time (`notime` without one) and the place, for example `chart-1985-03-14-0642-pune.pdf` or `chart-1990-07-15-0410-33.87s151.21e.pdf` for coordinates. A path without an extension gets `.pdf`. An existing file with that name is replaced. No timestamps are embedded, so the same chart and `--as-of` give byte-identical files (without `--as-of` the current dasha, and so the file, changes with the date).
+
+The text uses the Bitstream Vera font, which ships with reportlab and is embedded in the file. Symbols it lacks are replaced, so `28°01′34″` prints as `28°01'34"`. Vera covers Latin scripts only, so a place name in Cyrillic, Greek, Devanagari or CJK prints as `?`. Point `ASTRO_PDF_FONT` (and optionally `ASTRO_PDF_FONT_BOLD`) at a TrueType font that has those letters, such as DejaVu Sans or Noto Sans, to keep them.
+
+If the default PDF cannot be written (for example, the current folder is read-only), `astro` prints a warning and still exits 0, because the terminal report was produced. A PDF asked for with `--pdf` that cannot be written is an error (exit 1).
 
 ---
 
@@ -501,7 +505,7 @@ astro chart --date 1985-03-14 --time 06:42 --place Pune --json |
 | Code | Meaning | Typical causes |
 |---|---|---|
 | 0 | Chart produced | — |
-| 1 | Setup problem | Ephemeris files missing (`astro ephemeris fetch`), files not found (`ASTRO_HOME`), invalid `ASTRO_CHART_KEY`, the PDF could not be written (the terminal report is still printed) |
+| 1 | Setup problem | Ephemeris files missing (`astro ephemeris fetch`), files not found (`ASTRO_HOME`), invalid `ASTRO_CHART_KEY`, the PDF asked for with `--pdf` could not be written (the terminal report is still printed) |
 | 2 | More input needed | Ambiguous or unknown place, DST fold or gap, invalid date, unknown calendar, unknown profile, method or varga, malformed option |
 | 3 | Unsupported | Birth outside the ephemeris range; a profile that does not belong to the chosen method |
 
@@ -548,7 +552,7 @@ The birth is outside the bundled ephemeris files.
 Python could not verify the download server's TLS certificate. `astro` already trusts the `certifi` bundle as well as the system store, so this usually means a proxy or antivirus re-signs HTTPS traffic with its own certificate. Point Python at that certificate with `export SSL_CERT_FILE=/path/to/ca.pem`. On macOS with Python from python.org, also run `/Applications/Python 3.x/Install Certificates.command` once. Make sure you are running a version of `astro` that includes this fix (`git pull`, then `pip install -e ".[geo]"`).
 
 **"PDF not written: …"**
-The folder does not exist or is not writable. Pass `--pdf` with a writable path, run from another folder, or use `--no-pdf`. "No module named 'reportlab'" means the install predates the PDF report: run `pip install -e ".[geo]"` again.
+The folder does not exist or is not writable. Pass `--pdf` with a writable path, run from another folder, or use `--no-pdf`. For the default PDF this is only a warning. "No module named 'reportlab'" means the install predates the PDF report: run `pip install -e ".[geo]"` again.
 
 **"ephemeris_unavailable … run `astro ephemeris fetch`"**
 The data files are missing or damaged. Run the command; if you keep them elsewhere, set `ASTRO_EPHE`.
@@ -586,6 +590,7 @@ Everything runs locally; no birth data leaves your machine. The PDF, though, is 
 | `ASTRO_HOME` | the checkout containing `ontology/` and `profiles/` | Where the curated data lives |
 | `ASTRO_EPHE` | `$ASTRO_HOME/data/ephe` | Where the Swiss Ephemeris files live (`astro ephemeris path` prints it) |
 | `ASTRO_CHART_KEY` | random per run | Key for stable chart IDs (at least 32 hex digits) |
+| `ASTRO_PDF_FONT`, `ASTRO_PDF_FONT_BOLD` | Bitstream Vera (bundled with reportlab) | TrueType fonts for the PDF, for scripts Vera lacks |
 
 ---
 

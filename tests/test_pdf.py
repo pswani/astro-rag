@@ -1,7 +1,9 @@
 """PDF report (E1–E3): chart geometry, text the font can draw, CLI behaviour, contents."""
 
+import os
 from datetime import UTC, datetime, time
 from itertools import combinations
+from pathlib import Path
 
 import pytest
 from pypdf import PdfReader
@@ -11,6 +13,7 @@ from astro.cli.main import EXIT_ERROR, EXIT_OK, main, pdf_name
 from astro.cli.report import ChartRequest, build
 from astro.normalize.gazetteer import Place
 
+DEJAVU = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
 AS_OF = ["--as-of", "2026-10-19T00:00+00:00"]
 PUNE = ["chart", "--date", "1985-03-14", "--time", "06:42", "--place", "Pune, IN", *AS_OF]
 SIZE = (pdf.FRAME_W - 22) / 2 - 2  # the size the report draws charts at
@@ -80,6 +83,15 @@ def test_south_fits_every_body_in_any_sign(sign):
         assert x0 >= SIZE / 4 and x1 <= 3 * SIZE / 4 and y0 >= SIZE / 4 and y1 <= 3 * SIZE / 4
 
 
+def test_long_place_names_are_shortened_in_the_south_centre():
+    name = 'Poselok Turisticheskogo pansionata "Klyazminskoe vodohranilische"'
+    d = pdf.south_layout({i: [] for i in range(12)}, 0, SIZE, ["Rasi (D1)", "1985-03-14", name])
+    place = d.centre[-1]
+    assert place.text.endswith("...") and name.startswith(place.text[:-3])
+    x0, _, x1, _ = place.box()
+    assert x0 >= SIZE / 4 + 4 and x1 <= 3 * SIZE / 4 - 4
+
+
 def test_north_houses_run_anticlockwise_from_the_lagna():
     d = pdf.north_layout({i: [] for i in range(12)}, lagna=10, size=SIZE)
     signs = {h.number: h.sign for h in d.houses}
@@ -110,8 +122,9 @@ def test_clean_keeps_what_the_font_has_and_replaces_the_rest():
     assert pdf.clean("Kraków, São Paulo, Zürich") == "Kraków, São Paulo, Zürich"
     assert pdf.clean("Łódź") == "Łódz"  # Vera has Ł and ó but not ź: only its accent goes
     assert pdf.clean("東京") == "??"
+    assert pdf.clean("H\u0331allamish") == "Hallamish"  # a stray combining mark is dropped
     from reportlab.pdfbase import pdfmetrics
-    cmap = pdfmetrics.getFont(pdf.FONT).face.charToGlyph
+    cmap = pdfmetrics.getFont(pdf.fonts()[0]).face.charToGlyph
     assert all(ord(c) in cmap for c in pdf.clean("ṛṣ ā ī ū ṅ ñ ṭ ḍ ṇ ś ṃ ḥ ◀ ★ …"))
 
 
@@ -151,14 +164,45 @@ def test_pdf_options(tmp_path):
     assert code == EXIT_OK and (tmp_path / "out" / "chart-1985-03-14-0642-pune.pdf").is_file()
     code, _, err = run(*PUNE, "--vargas", "D1", "--pdf", "nofolder/")  # a folder, not a file
     assert code == EXIT_ERROR and "PDF not written" in err and not (tmp_path / "nofolder").exists()
-    with pytest.raises(SystemExit):
-        run(*PUNE, "--pdf", "y.pdf", "--no-pdf")
+    code, _, err = run(*PUNE, "--vargas", "D1", "--pdf", "plain")  # no extension: .pdf added
+    assert code == EXIT_OK and (tmp_path / "plain.pdf").is_file()
+    assert f"PDF written to {tmp_path / 'plain.pdf'}" in err  # absolute, as typed or not
+    for bad in (["--pdf", "y.pdf", "--no-pdf"], ["--pdf", ""], ["--pdf", " "]):
+        with pytest.raises(SystemExit):
+            run(*PUNE, *bad)
+    assert not list(tmp_path.glob("*.part")) and not list(tmp_path.glob("*/*.part"))
 
 
 def test_unwritable_pdf_is_an_error_after_the_report(tmp_path):
     code, out, err = run(*PUNE, "--vargas", "D1", "--pdf", str(tmp_path / "missing" / "a.pdf"))
     assert code == EXIT_ERROR and "PDF not written" in err
     assert "Rasi D1" in out  # the terminal report was still printed
+
+
+def test_unwritable_default_pdf_only_warns(tmp_path, monkeypatch):
+    ro = tmp_path / "ro"
+    ro.mkdir()
+    ro.chmod(0o500)
+    monkeypatch.chdir(ro)
+    try:
+        if os.access(ro, os.W_OK):  # root ignores the mode
+            pytest.skip("the folder stays writable for this user")
+        code, out, err = run(*PUNE, "--vargas", "D1")
+        assert code == EXIT_OK and "PDF not written" in err and "--no-pdf" in err
+        assert "Rasi D1" in out and list(ro.iterdir()) == []
+    finally:
+        ro.chmod(0o700)
+
+
+def test_unwritable_default_pdf_only_warns_whoever_runs_it(monkeypatch):
+    def deny(*a, **k):
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(pdf, "write_pdf", deny)
+    code, out, err = run(*PUNE, "--vargas", "D1")
+    assert code == EXIT_OK and "PDF not written: Permission denied" in err
+    code, _, err = run(*PUNE, "--vargas", "D1", "--pdf", "a.pdf")
+    assert code == EXIT_ERROR
 
 
 def test_south_and_unknown_time_pdfs(tmp_path):
@@ -169,6 +213,21 @@ def test_south_and_unknown_time_pdfs(tmp_path):
     text = pdf_text(tmp_path / "u.pdf")
     assert code == EXIT_OK and "Chandra lagna" in text and "time unknown" in text
     assert "BNN links" in text and "D60" in text
+
+
+@pytest.mark.skipif(not DEJAVU.is_file(), reason="DejaVu Sans not installed")
+def test_another_font_keeps_other_scripts(tmp_path, monkeypatch):
+    monkeypatch.setenv("ASTRO_PDF_FONT", str(DEJAVU))
+    try:
+        assert pdf.clean("Слупчане") == "Слупчане"
+        rep = build(ChartRequest(1985, 3, 14, time(6, 42), 42.1, 21.6, timezone="Europe/Skopje",
+                                 place=Place("Слупчане", "Lipkovo", "MK", "Macedonia", 42.1,
+                                             21.6, 0),
+                                 as_of=datetime(2026, 10, 19, tzinfo=UTC), vargas=("D1",)))
+        assert "Слупчане" in pdf_text(pdf.write_pdf(rep, tmp_path / "c.pdf"))
+    finally:
+        monkeypatch.delenv("ASTRO_PDF_FONT")
+    assert pdf.clean("Слупчане") == "????????"  # back to Vera
 
 
 def test_pdf_bytes_depend_only_on_the_chart(tmp_path):

@@ -113,7 +113,15 @@ Still out of scope: functional roles (G-R2 needs a sourced table), Shadbala (G-S
 - [x] E1 Table data shared by both renderers (`render.py` `*_data` → `Table`); terminal text unchanged apart from a trailing space
 - [x] E2 PDF writer (`cli/pdf.py`, reportlab): North (diamond) and South charts as vector drawings with every label fitted inside its house, typeset tables, dasha with the current period highlighted, notes and attribution, page footer; embedded Vera font with replacements for missing glyphs; byte-identical output for the same chart; atomic write
 - [x] E3 CLI: `--style` defaults to `north`; a PDF is written on every text run (`--pdf PATH|DIR`, `--no-pdf`; `--json` writes one only with `--pdf`); default name `chart-<date>-<time>-<place>.pdf`; write failures exit 1 after the report
-- [x] E4 Tests (geometry of every house with all ten bodies, font coverage, CLI options, PDF contents read back, determinism), review and fixes, README
+- [x] E4 Tests (geometry of every house with all ten bodies, font coverage, CLI options, PDF contents read back, determinism), review and fixes, README. The independent review checked text output unchanged on 18 cases, every feature missing in turn, and the chart geometry on 40 random charts × 16 vargas × both styles. Its findings, all fixed:
+  - long place names are shortened in the South centre box;
+  - stray combining marks are dropped (they printed as `?`);
+  - `ASTRO_PDF_FONT` handles non-Latin scripts;
+  - failing to write the default PDF only warns (exit 0);
+  - `--pdf ""` is refused, `.pdf` is added when missing, and the printed path is absolute;
+  - the temp file is unique per run;
+  - the determinism claim is qualified by `--as-of`;
+  - the R column is right-aligned, and the header's spacing is kept.
 
 ### D11 review rounds
 

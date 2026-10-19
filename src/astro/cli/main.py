@@ -74,6 +74,12 @@ def _uncertainty(s: str) -> float:
     return v
 
 
+def _pdf_path(s: str) -> str:
+    if not s.strip():
+        raise argparse.ArgumentTypeError("give a file or folder name")
+    return s
+
+
 def _instant(s: str) -> datetime:
     try:
         dt = datetime.fromisoformat(s)
@@ -125,7 +131,7 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--json", action="store_true",
                    help="machine-readable output (no PDF unless --pdf is given)")
     pdf = c.add_mutually_exclusive_group()
-    pdf.add_argument("--pdf", metavar="PATH",
+    pdf.add_argument("--pdf", metavar="PATH", type=_pdf_path,
                      help="where to write the PDF: a file, or a directory for the default name")
     pdf.add_argument("--no-pdf", action="store_true", help="do not write a PDF")
 
@@ -261,7 +267,7 @@ def cmd_chart(args, out, err) -> int:
         out(render(report, args.style))
         if place is not None:
             out(ATTRIBUTION)
-    if args.no_pdf or (args.json and not args.pdf):
+    if args.no_pdf or (args.json and args.pdf is None):
         return EXIT_OK
     return _write_pdf(report, args, err)
 
@@ -279,20 +285,28 @@ def pdf_name(req) -> str:
 
 
 def _write_pdf(report, args, err) -> int:
+    """Write the PDF. Failing to write the default PDF is a warning (the report was the point);
+    failing to write one asked for with --pdf is an error."""
+    asked = args.pdf is not None
+    fail = EXIT_ERROR if asked else EXIT_OK
     try:
         from astro.cli.pdf import write_pdf
     except ImportError as e:  # an install from before reportlab became a dependency
-        err(f"PDF not written: {e}. Reinstall with `pip install -e .` (or pass --no-pdf)")
-        return EXIT_ERROR
-    target = Path(args.pdf).expanduser() if args.pdf else Path.cwd()
-    if target.is_dir() or (args.pdf or "").endswith(("/", os.sep)):
+        err(f'PDF not written: {e}. Reinstall with `pip install -e ".[geo]"` (or pass '
+            "--no-pdf)")
+        return fail
+    target = Path(args.pdf).expanduser() if asked else Path.cwd()
+    if target.is_dir() or (asked and args.pdf.endswith(("/", os.sep))):
         target = target / pdf_name(report.request)
+    elif not target.suffix:
+        target = target.with_suffix(".pdf")
     try:
         path = write_pdf(report, target, args.style)
     except OSError as e:
-        err(f"PDF not written: {e.strerror or e} ({target})")
-        return EXIT_ERROR
-    err(f"PDF written to {path}")
+        err(f"PDF not written: {e.strerror or e} ({target})"
+            + ("" if asked else "; use --pdf PATH or --no-pdf"))
+        return fail
+    err(f"PDF written to {path.resolve()}")
     return EXIT_OK
 
 
