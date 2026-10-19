@@ -20,6 +20,12 @@ def run(*argv):
     return code, "\n".join(out), "\n".join(err)
 
 
+@pytest.fixture(autouse=True)
+def _in_tmp(tmp_path, monkeypatch):
+    """`astro chart` writes a PDF to the working directory by default."""
+    monkeypatch.chdir(tmp_path)
+
+
 @pytest.fixture(scope="module")
 def gaz():
     return CityTable()
@@ -52,7 +58,7 @@ def test_lookup_rules(gaz):
 # -- chart -------------------------------------------------------------------------------------
 
 def test_south_chart_report():
-    code, out, err = run(*PUNE)
+    code, out, err = run(*PUNE, "--style", "south")
     assert code == EXIT_OK, err
     assert "Rasi (D1)" in out and "Navamsa (D9)" in out and "Dasamsa (D10)" in out
     assert "Pune, Maharashtra, India" in out
@@ -313,7 +319,8 @@ def test_bnn_method_and_native_gender():
 
 def test_all_vargas_and_unknown_names():
     code, out, _ = run(*PUNE, "--varga-table", "all", "--vargas", "D60")
-    assert code == EXIT_OK and "Shashtiamsa D60" not in out and "Shashtiamsa (D60)" in out
+    # only the charts asked for are drawn (North captions read "Navamsa D9")
+    assert code == EXIT_OK and "Shashtiamsa D60" in out and "Navamsa D9" not in out
     assert "D2   D3   D4   D7   D9   D10  D12  D16  D20  D24  D27  D30  D40  D45  D60" in out
     code, _, err = run(*PUNE, "--vargas", "D5")
     assert code == EXIT_NEEDS_INPUT and "unknown varga D5" in err
@@ -325,7 +332,7 @@ def test_all_vargas_and_unknown_names():
 
 def test_vargas_keeps_its_meaning_and_varga_table_is_separate():
     code, out, _ = run(*PUNE, "--vargas", "D1,D9")
-    assert code == EXIT_OK and "Navamsa (D9)" in out and "Dasamsa (D10)" not in out
+    assert code == EXIT_OK and "Navamsa D9" in out and "Dasamsa D10" not in out
     assert "Body       D9" in out  # the table defaults to the charts drawn
     assert "[draft: calculations only, no reviewed rules yet]" in out
 

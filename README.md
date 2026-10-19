@@ -54,6 +54,8 @@ Check the installation:
 astro chart --date 1985-03-14 --time 06:42 --place "Pune, IN"
 ```
 
+This prints the report and writes `chart-1985-03-14-0642-pune.pdf` in the current directory.
+
 Without the `[geo]` extra, `astro` still works, but you must give coordinates and a time zone (`--lat`, `--lon`, `--tz`) instead of a place name.
 
 ---
@@ -73,31 +75,50 @@ Place      Pune, Maharashtra, India  18.5196N 73.8554E
 Profile    parashari_v1: lahiri ayanamsa, whole sign houses, mean node
 Ayanamsa   23.6468°   uncertainty ±2 min
 
-+-----------+-----------+-----------+-----------+
-|        Pi |        Ar |        Ta |        Ge |
-|Me Ve(R)   |Ma Ra      |           |           |
-|           |           |           |           |
-+-----------+-----------+-----------+-----------+
-|        Aq |                       |        Cn |
-|As Su      |       Rasi (D1)       |           |
-|           |                       |           |
-+-----------+                       +-----------+
-|        Cp |       1985-03-14      |        Le |
-|Ju         |          Pune         |           |
-|           |                       |           |
-+-----------+-----------+-----------+-----------+
-|        Sg |        Sc |        Li |        Vi |
-|Mo         |Sa(R)      |Ke         |           |
-|           |           |           |           |
-+-----------+-----------+-----------+-----------+
+Rasi D1
++-----------------------------------------------------------+
+| \                         /   \                         / |
+|    \        12         /         \        10         /    |
+|      \      Me       /             \      Ju       /      |
+|         \  Ve(R)  /                   \         /         |
+|           \     /          11           \     /           |
+|     1       \ /           As Su           \ /       9     |
+|   Ma Ra    /   \                         /   \     Mo     |
+|          /       \                     /       \          |
+|       /             \               /             \       |
+|     /                 \           /                 \     |
+|   /          2          \       /          8          \   |
+|/                           \ /           Sa(R)           \|
+|\                           / \                           /|
+|   \                     /       \                     /   |
+|     \                 /           \                 /     |
+|       \             /               \             /       |
+|          \       /                     \       /          |
+|            \   /            5            \   /            |
+|     3       / \                           / \       7     |
+|           /     \                       /     \    Ke     |
+|         /         \                   /         \         |
+|      /               \             /               \      |
+|    /         4         \         /         6         \    |
+| /                         \   /                         \ |
++-----------------------------------------------------------+
+
 ```
 
-…followed by the Navamsa (D9) and Dasamsa (D10) charts, then the tables described in [Reading the report](#reading-the-report).
+…followed by the Navamsa (D9) and Dasamsa (D10) charts, then the tables described in [Reading the report](#reading-the-report). The last line, on stderr, says where the PDF went:
+
+```text
+PDF written to /home/you/charts/chart-1985-03-14-0642-pune.pdf
+```
+
+The PDF has the same content, typeset: the charts drawn as diagrams (two per row, the Lagna's house shaded), then the tables. See [The PDF report](#the-pdf-report).
 
 More examples:
 
 ```sh
-astro chart --date 1985-03-14 --time 06:42 --place "Pune, IN" --style north       # North Indian layout
+astro chart --date 1985-03-14 --time 06:42 --place "Pune, IN" --style south       # South Indian layout
+astro chart --date 1985-03-14 --time 06:42 --place Pune --pdf ~/charts/           # PDF into a folder
+astro chart --date 1985-03-14 --time 06:42 --place Pune --no-pdf                  # terminal only
 astro chart --date 1990-07-15 --time 04:10 --lat -33.87 --lon 151.21              # coordinates
 astro chart --date 1985-03-14 --place Pune                                        # birth time unknown
 astro chart --date 1985-03-14 --time 06:42 --place Pune --varga-table all         # all 16 vargas
@@ -240,18 +261,7 @@ Su Sun     Aquarius     29°45′28″   Purva Bhadrapada 3   Jupiter     1*
 
 ### The charts
 
-**South Indian layout** (`--style south`, the default): each square is a **sign**, always in the same place. Pisces is at top left and the signs run clockwise. Each square shows its sign's abbreviation at top right and the planets in that sign. `As` marks the Lagna.
-
-| Abbr. | Sign | Abbr. | Sign | Abbr. | Sign |
-|---|---|---|---|---|---|
-| Ar | Aries (Mesha) | Le | Leo (Simha) | Sg | Sagittarius (Dhanu) |
-| Ta | Taurus (Vrishabha) | Vi | Virgo (Kanya) | Cp | Capricorn (Makara) |
-| Ge | Gemini (Mithuna) | Li | Libra (Tula) | Aq | Aquarius (Kumbha) |
-| Cn | Cancer (Karka) | Sc | Scorpio (Vrishchika) | Pi | Pisces (Meena) |
-
-Planets: `Su` Sun, `Mo` Moon, `Ma` Mars, `Me` Mercury, `Ju` Jupiter, `Ve` Venus, `Sa` Saturn, `Ra` Rahu, `Ke` Ketu, `As` Lagna.
-
-**North Indian layout** (`--style north`): each region is a **house**, always in the same place. House 1 is the top centre diamond, and houses run anticlockwise. The number in each house is its **sign number** (1 = Aries … 12 = Pisces). If a small triangle is too full, it shows `+n more`; the tables always list everything.
+**North Indian layout** (the diamond; the default, `--style north`): each region is a **house**, always in the same place. House 1 is the top centre diamond, and houses run anticlockwise. The number in each house is its **sign number** (1 = Aries … 12 = Pisces). If a small triangle is too full in the terminal, it shows `+n more`; the PDF fits every planet, and the tables always list everything.
 
 ```text
 Navamsa D9
@@ -265,7 +275,18 @@ Navamsa D9
 …
 ```
 
-Here Gemini (3) rises in the Navamsa; house 12 holds Taurus (2) with the Moon, Mars and Jupiter.
+Here Gemini (3) rises in the Navamsa; house 12 holds Taurus (2) with the Moon, Mars and Jupiter. Without a birth time the Lagna is unknown, so house 1 holds the Moon's sign instead and the caption says `(Chandra lagna)`.
+
+**South Indian layout** (`--style south`): each square is a **sign**, always in the same place. Pisces is at top left and the signs run clockwise. Each square shows its sign's abbreviation at top right and the planets in that sign. `As` marks the Lagna.
+
+| Abbr. | Sign | Abbr. | Sign | Abbr. | Sign |
+|---|---|---|---|---|---|
+| Ar | Aries (Mesha) | Le | Leo (Simha) | Sg | Sagittarius (Dhanu) |
+| Ta | Taurus (Vrishabha) | Vi | Virgo (Kanya) | Cp | Capricorn (Makara) |
+| Ge | Gemini (Mithuna) | Li | Libra (Tula) | Aq | Aquarius (Kumbha) |
+| Cn | Cancer (Karka) | Sc | Scorpio (Vrishchika) | Pi | Pisces (Meena) |
+
+Planets: `Su` Sun, `Mo` Moon, `Ma` Mars, `Me` Mercury, `Ju` Jupiter, `Ve` Venus, `Sa` Saturn, `Ra` Rahu, `Ke` Ketu, `As` Lagna.
 
 **Divisional charts (vargas).** By default you get the Rasi (D1), Navamsa (D9) and Dasamsa (D10). Any of D1, D2, D3, D4, D7, D9, D10, D12, D16, D20, D24, D27, D30, D40, D45 and D60 can be drawn with `--vargas`. Each uses one declared Parashari construction, listed in `ontology/vargas.yaml`.
 
@@ -373,14 +394,28 @@ Read it before relying on a chart.
 
 | Option | Effect |
 |---|---|
-| `--style south\|north` | Chart layout (default `south`). |
+| `--style north\|south` | Chart layout: `north` is the diamond (default), `south` the fixed-sign grid. Applies to the terminal and the PDF. |
 | `--vargas D1,D9,…` | Which divisional charts to draw (default `D1,D9,D10`). |
 | `--varga-table D2,D30,…\|all` | Which divisions to list in the varga table (default: the charts drawn). |
 | `--as-of 2030-01-01T00:00+00:00` | The moment for the "current" dasha (default: now). A UTC offset is required. |
 | `--method parashari\|bnn` | Astrological school (default `parashari`). |
 | `--profile ID` | Calculation profile (default: the method's own). |
 | `--native-gender male\|female` | Optional input used only by BNN. |
-| `--json` | Machine-readable output instead of the report. |
+| `--json` | Machine-readable output instead of the report (no PDF unless `--pdf` is given). |
+| `--pdf PATH` | Where to write the PDF: a file name, or an existing folder for the default name `chart-<date>-<time>-<place>.pdf`. |
+| `--no-pdf` | Terminal output only. |
+
+### The PDF report
+
+Every `astro chart` run also writes an A4 PDF, unless you pass `--no-pdf` (or `--json` without `--pdf`). It holds the same information as the terminal report:
+
+- a title block with the birth details, method, profile and ayanamsa;
+- the charts in the chosen style, drawn as diagrams. The Lagna's house is shaded, and every planet is fitted inside its house; the type gets smaller when a house is crowded;
+- the planet, condition, aspect, varga, BNN and panchanga tables, and the dasha list with the current period highlighted;
+- the notes, including the provisional settings and the GeoNames attribution;
+- a footer with the program version, method, profile and page number.
+
+The default file name has the birth date, the clock time (`notime` without one) and the place, for example `chart-1985-03-14-0642-pune.pdf` or `chart-1990-07-15-0410-33.87s151.21e.pdf` for coordinates. An existing file with that name is replaced. The same chart always gives byte-identical files (no timestamps are embedded). The text uses the Bitstream Vera font, which ships with reportlab and is embedded in the file. Symbols the font lacks are replaced, so `28°01′34″` prints as `28°01'34"`.
 
 ---
 
@@ -466,7 +501,7 @@ astro chart --date 1985-03-14 --time 06:42 --place Pune --json |
 | Code | Meaning | Typical causes |
 |---|---|---|
 | 0 | Chart produced | — |
-| 1 | Setup problem | Ephemeris files missing (`astro ephemeris fetch`), files not found (`ASTRO_HOME`), invalid `ASTRO_CHART_KEY` |
+| 1 | Setup problem | Ephemeris files missing (`astro ephemeris fetch`), files not found (`ASTRO_HOME`), invalid `ASTRO_CHART_KEY`, the PDF could not be written (the terminal report is still printed) |
 | 2 | More input needed | Ambiguous or unknown place, DST fold or gap, invalid date, unknown calendar, unknown profile, method or varga, malformed option |
 | 3 | Unsupported | Birth outside the ephemeris range; a profile that does not belong to the chosen method |
 
@@ -512,6 +547,9 @@ The birth is outside the bundled ephemeris files.
 **`astro ephemeris fetch` fails with "CERTIFICATE_VERIFY_FAILED"**
 Python could not verify the download server's TLS certificate. `astro` already trusts the `certifi` bundle as well as the system store, so this usually means a proxy or antivirus re-signs HTTPS traffic with its own certificate. Point Python at that certificate with `export SSL_CERT_FILE=/path/to/ca.pem`. On macOS with Python from python.org, also run `/Applications/Python 3.x/Install Certificates.command` once. Make sure you are running a version of `astro` that includes this fix (`git pull`, then `pip install -e ".[geo]"`).
 
+**"PDF not written: …"**
+The folder does not exist or is not writable. Pass `--pdf` with a writable path, run from another folder, or use `--no-pdf`. "No module named 'reportlab'" means the install predates the PDF report: run `pip install -e ".[geo]"` again.
+
 **"ephemeris_unavailable … run `astro ephemeris fetch`"**
 The data files are missing or damaged. Run the command; if you keep them elsewhere, set `ASTRO_EPHE`.
 
@@ -537,7 +575,7 @@ Every recorded time is assumed to carry the uncertainty of its precision (±2 mi
 
 ## Privacy
 
-Everything runs locally; no birth data leaves your machine. The `chart_id` in JSON output is derived with a secret key, so it cannot be traced back to the birth details. By default the key is random for each run. Set `ASTRO_CHART_KEY` to a secret of at least 32 hex digits (64 recommended, e.g. from `python -c "import secrets; print(secrets.token_hex(32))"`) to get the same ID for the same chart across runs.
+Everything runs locally; no birth data leaves your machine. The PDF, though, is a file containing the birth details: it is written where you run the command (or where `--pdf` says), so mind where it lands and who can read it, or pass `--no-pdf`. The `chart_id` in JSON output is derived with a secret key, so it cannot be traced back to the birth details. By default the key is random for each run. Set `ASTRO_CHART_KEY` to a secret of at least 32 hex digits (64 recommended, e.g. from `python -c "import secrets; print(secrets.token_hex(32))"`) to get the same ID for the same chart across runs.
 
 ---
 
@@ -557,6 +595,7 @@ Everything runs locally; no birth data leaves your machine. The `chart_id` in JS
 - **Place names:** [GeoNames](https://www.geonames.org/) (CC BY 4.0), via the `reverse_geocode` package. Reports that use a place name carry the attribution.
 - **Time zones:** the IANA time-zone database (`tzdata`), pinned to the version named in the profile.
 - **Reference tables** (sign lords, dignities, nakshatras, dasha years, varga constructions): `ontology/*.yaml`, following BPHS, marked provisional until reviewed.
+- **reportlab** (BSD) draws the PDF; the embedded **Bitstream Vera** fonts come with it under the Bitstream Vera licence.
 - **PyJHora** is used only in tests, to verify results; it is not part of the program.
 
 ---

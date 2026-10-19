@@ -108,6 +108,13 @@ are implemented as profile options with provisional values, listed in `provision
 
 Still out of scope: functional roles (G-R2 needs a sourced table), Shadbala (G-S2), PAN-3 (G-PN2), phase-7 items.
 
+## E PDF report and the diamond as the default chart
+
+- [x] E1 Table data shared by both renderers (`render.py` `*_data` → `Table`); terminal text unchanged apart from a trailing space
+- [x] E2 PDF writer (`cli/pdf.py`, reportlab): North (diamond) and South charts as vector drawings with every label fitted inside its house, typeset tables, dasha with the current period highlighted, notes and attribution, page footer; embedded Vera font with replacements for missing glyphs; byte-identical output for the same chart; atomic write
+- [x] E3 CLI: `--style` defaults to `north`; a PDF is written on every text run (`--pdf PATH|DIR`, `--no-pdf`; `--json` writes one only with `--pdf`); default name `chart-<date>-<time>-<place>.pdf`; write failures exit 1 after the report
+- [x] E4 Tests (geometry of every house with all ten bodies, font coverage, CLI options, PDF contents read back, determinism), review and fixes, README
+
 ### D11 review rounds
 
 | Round | Main findings | Root-cause fix |
@@ -166,6 +173,7 @@ ruff check src tests scripts && lint-imports && pytest
 | Date | Change |
 |---|---|
 | 2026-10-19 | List created |
+| 2026-10-19 | E done: PDF report alongside the terminal output; the North Indian diamond is the default chart style |
 | 2026-10-19 | D done: requirement gaps closed (CALC-2, CALC-3 Placidus, REL-1, TRN-3, DAS-5 partial, VAR-2, §7.10 adapters, INP-1 provenance); 7 review rounds; 412 tests; [alignment.md](alignment.md) |
 | 2026-10-19 | C done: `astro chart` / `astro places` / `astro ephemeris`, 28 CLI tests, 10 review findings fixed. The offline city table covers B4.5 for names in GeoNames cities1000; alternate names (e.g. Bangalore) still need the full dump |
 | 2026-10-19 | B7 done: 168 tests, clean-venv CI check, oracle extra declares PyJHora's undeclared imports (CI fails instead of skipping) |
