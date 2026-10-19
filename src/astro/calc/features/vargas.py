@@ -1,7 +1,8 @@
-"""Divisional charts from the data-driven spec in `ontology/vargas.yaml` (VAR-1, G-V1).
+"""Divisional charts from the data-driven spec in `ontology/vargas.yaml` (VAR-1, VAR-2, G-V1).
 
-varga_sign = (sign + start_offset(sign) + floor(deg_in_sign / (30 / N))) mod 12. For equal-part
-vargas every boundary is a multiple of 30/N degrees, so sensitivity uses that width.
+Equal parts: varga_sign = (start + step × floor(deg_in_sign / (30 / N))) mod 12, with the start
+relative to the sign or absolute, chosen by parity, modality or element. Table parts (D2, D30)
+give the sign directly. Sensitivity solves the crossings of the varga's own part boundaries.
 """
 
 from __future__ import annotations
@@ -12,7 +13,13 @@ from astro.calc.context import ChartContext
 from astro.calc.core.angles import deg_in_sign, is_odd_sign, modality, sign_index
 from astro.calc.core.status import Status
 from astro.calc.engine import Deps, FeatureRequest
-from astro.calc.features.common import assess_width, assessment_of, points, subject
+from astro.calc.features.common import (
+    assess_boundaries,
+    assess_width,
+    assessment_of,
+    points,
+    subject,
+)
 from astro.calc.model import ChartFact, FeatureResult
 from astro.calc.refdata import VargaSpec
 from astro.calc.sensitivity import Assessment
@@ -20,17 +27,28 @@ from astro.calc.sensitivity import Assessment
 DEFAULT_VARGAS = ("D1", "D9", "D10")
 
 
+ELEMENTS = ("fire", "earth", "air", "water")  # Aries, Taurus, Gemini, Cancer, then repeating
+
+
 def varga_sign(lon: float, spec: VargaSpec) -> int:
-    s = sign_index(lon)
+    s, deg = sign_index(lon), deg_in_sign(lon)
+    if spec.table is not None:
+        for end, sign in spec.table["odd" if is_odd_sign(s) else "even"]:
+            if deg < end:
+                return sign
+        raise AssertionError("table parts end at 30°")  # pragma: no cover
     if spec.rule == "same":
         offset = 0
     elif spec.rule == "by_parity":
         offset = spec.offsets["odd" if is_odd_sign(s) else "even"]
+    elif spec.rule == "by_element":
+        offset = spec.offsets[ELEMENTS[s % 4]]
     else:
         offset = spec.offsets[modality(s)]
+    start = offset if spec.basis == "absolute" else s + offset
     # scale first so a longitude exactly on a part boundary lands in the later part
-    part = min(int(deg_in_sign(lon) * spec.divisions // 30.0), spec.divisions - 1)
-    return (s + offset + part) % 12
+    part = min(int(deg * spec.divisions // 30.0), spec.divisions - 1)
+    return (start + spec.step * part) % 12
 
 
 class Vargas:
@@ -45,7 +63,7 @@ class Vargas:
         specs = {v: ctx.refdata.varga_spec(v) for v in vargas}
         facts: list[ChartFact] = []
         signs: dict[tuple[str, str], int | None] = {}
-        assessments: dict[tuple[str, int], Assessment] = {}
+        assessments: dict[tuple[str, str], Assessment] = {}
         for body in points(ctx):
             subj = subject(body)
             lon_f = pos.fact("longitude", subj)
@@ -56,8 +74,7 @@ class Vargas:
                     continue
                 vs = varga_sign(float(lon_f.value), spec)
                 signs[(subj, v)] = vs
-                a = assessments.setdefault((subj, spec.divisions),
-                                           self._assess(ctx, body, pos, spec.divisions))
+                a = assessments.setdefault((subj, v), self._assess(ctx, body, pos, spec))
                 facts.append(ctx.fact("varga_sign", subj, ctx.refdata.rashi_id(vs), varga=v,
                                       sensitivity=a.sensitivity, margins=a.margins))
         if "D9" in specs:
@@ -69,18 +86,20 @@ class Vargas:
                     continue
                 lon = float(pos.fact("longitude", subj).value)
                 # D9 boundaries include every sign boundary, so the D9 assessment suffices
-                a = assessments[(subj, d9.divisions)]
+                a = assessments[(subj, "D9")]
                 facts.append(ctx.fact("vargottama", subj, varga_sign(lon, d9) == sign_index(lon),
                                       sensitivity=a.sensitivity, margins=a.margins))
         return FeatureResult(feature_id=self.id, status=Status.OK, facts=tuple(facts),
                              provenance={"vargas": vargas})
 
     @staticmethod
-    def _assess(ctx: ChartContext, body: str, pos: FeatureResult, divisions: int) -> Assessment:
+    def _assess(ctx: ChartContext, body: str, pos: FeatureResult, spec: VargaSpec) -> Assessment:
+        if spec.table is not None:
+            return assess_boundaries(ctx, body, spec.boundaries())
         # D1 boundaries are signs and D9 boundaries are padas: reuse the positions assessment
-        kind = {1: "sign", 9: "pada"}.get(divisions)
+        kind = {1: "sign", 9: "pada"}.get(spec.divisions)
         if kind is not None:
             return assessment_of(pos.fact(kind, subject(body)))
-        return assess_width(ctx, body, 30.0 / divisions)
+        return assess_width(ctx, body, 30.0 / spec.divisions)
 
 

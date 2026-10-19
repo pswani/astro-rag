@@ -48,6 +48,8 @@ class BirthInput(BaseModel):
     timezone: str | None = None
     utc_offset_minutes: int | None = Field(default=None, ge=-16 * 60, le=16 * 60)
     time_standard_note: str | None = None
+    # how the coordinates were obtained (INP-1): gazetteer match, or supplied directly
+    place_provenance: dict | None = None
 
     @field_validator("local_time")
     @classmethod
@@ -102,7 +104,10 @@ def _needs(reason: Reason, detail: str, **kw) -> Normalization:
 def normalize_birth(inp: BirthInput, *, expected_tzdata: str | None = None,
                     tz_lookup: Callable[[float, float], str | None] | None = None
                     ) -> Normalization:
-    prov: dict = {"tzdata": tzdata.IANA_VERSION}
+    prov: dict = {"tzdata": tzdata.IANA_VERSION,
+                  "place": inp.place_provenance or {"source": "coordinates",
+                                                    "latitude": inp.latitude,
+                                                    "longitude": inp.longitude}}
     assumptions: list[str] = []
     if expected_tzdata is not None and expected_tzdata != tzdata.IANA_VERSION:
         return Normalization(status="unsupported", reason=Reason.UNSUPPORTED_PROFILE,

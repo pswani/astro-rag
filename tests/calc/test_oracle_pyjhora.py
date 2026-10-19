@@ -70,7 +70,7 @@ def run(chart):
     ctx = ChartContext(f"chart:{name}", NormalizedBirth(jd_ut, lat, lon), prof, ephemeris(),
                        refdata())
     reqs = {k: R.of(k) for k in ("positions", "panchanga", "vimshottari")}
-    reqs["vargas"] = R.of("vargas", vargas=("D1", "D9", "D10"))
+    reqs["vargas"] = R.of("vargas", vargas=tuple(f"D{n}" for n in (1, *SHODASHVARGA)))
     out = default_engine().run(ctx, list(reqs.values()))
     drik.set_ayanamsa_mode("LAHIRI")
     return place, jd_local, jd_ut, {k: out[v] for k, v in reqs.items()}
@@ -118,14 +118,19 @@ def test_panchanga_limbs(chart):
 JHORA_ORDER = ["sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn", "rahu", "ketu"]
 
 
-@pytest.mark.parametrize("factor", [9, 10])
+# PyJHora's "Traditional Parasara" method per varga: 2 for the hora, 1 for the rest
+SHODASHVARGA = (2, 3, 4, 7, 9, 10, 12, 16, 20, 24, 27, 30, 40, 45, 60)
+PARASHARA_METHOD = {2: 2}
+
+
+@pytest.mark.parametrize("factor", SHODASHVARGA)
 def test_varga_signs(chart, factor):
-    """chart_method=1 is "Traditional Parasara", our declared construction. (drik.dhasavarga
-    uses the cyclic parivritti formula, which differs from Parashari D10.)"""
+    """Our declared constructions against PyJHora's traditional Parashari ones. (drik.dhasavarga
+    uses the cyclic parivritti formula, which differs from Parashari for D10 and others.)"""
     place, jd_local, jd_ut, res = chart
     with contextlib.redirect_stdout(io.StringIO()):
         theirs = charts.divisional_chart(jd_local, place, divisional_chart_factor=factor,
-                                         chart_method=1)
+                                         chart_method=PARASHARA_METHOD.get(factor, 1))
     for planet, (sign, _deg) in theirs:
         subj = "lagna" if planet == "L" else f"graha:{JHORA_ORDER[planet]}"
         if planet not in ("L", *range(9)):
@@ -149,3 +154,28 @@ def test_vimshottari_ad_starts_match(chart):
         assert mine.lord == f"graha:{JHORA_ORDER[lords[-1]]}"
         their_start = jd_from_civil(y, m, d, h) - place.timezone / 24.0
         assert abs(jd_from_utc(mine.start_utc) - their_start) <= 1 / 1440
+
+
+def test_graha_drishti_matches(chart):
+    """PyJHora's graha drishti: 7th for all, Mars 4/8, Jupiter 5/9, Saturn 3/10, nodes 7th."""
+    from jhora.horoscope.chart import house
+
+    place, jd_local, jd_ut, res = chart
+    p = matched_profile()
+    p = p.model_copy(update={"aspects": p.aspects.model_copy(update={"nodes": "seventh"})})
+    ctx = ChartContext("chart:o", NormalizedBirth(jd_ut, place.latitude, place.longitude), p,
+                       ephemeris(), refdata())
+    (asp,) = default_engine().run(ctx, [R.of("aspects")]).values()
+    pos = res["positions"]
+    h_to_p = [""] * 12
+    for i, name in enumerate(JHORA_ORDER):
+        s = refdata().rashi_index(pos.fact("sign", f"graha:{name}").value)
+        h_to_p[s] = f"{h_to_p[s]}/{i}".strip("/")
+    lag = refdata().rashi_index(pos.fact("sign", "lagna").value)
+    h_to_p[lag] = f"{h_to_p[lag]}/L".strip("/")
+    with contextlib.redirect_stdout(io.StringIO()):
+        arp, _, _ = house.graha_drishti_from_chart(h_to_p)
+    for i, name in enumerate(JHORA_ORDER):
+        ours = [refdata().rashi_index(x) for x in
+                asp.fact("aspects_signs", f"graha:{name}", frame="rashi").value]
+        assert sorted(ours) == sorted(arp[i]), name

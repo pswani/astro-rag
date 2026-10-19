@@ -137,8 +137,10 @@ def test_json_output_and_stable_ids(monkeypatch):
     code, out, _ = run(*PUNE, "--json")
     assert code == EXIT_OK
     data = json.loads(out)
-    assert set(data["results"]) == {"positions", "houses", "vargas", "panchanga",
-                                    "vimshottari", "dasha_active"}
+    assert {"positions", "houses", "relations", "friendship", "condition", "aspects", "vargas",
+            "panchanga", "vimshottari", "dasha_active", "dasha_context"} <= set(data["results"])
+    assert data["method"]["id"] == "parashari"
+    assert data["normalization"]["provenance"]["place"]["query"] == "Pune, IN"
     assert all(r["status"] == "ok" for r in data["results"].values())
     code2, out2, _ = run(*PUNE, "--json")
     assert json.loads(out2)["chart_id"] == data["chart_id"]
@@ -261,3 +263,35 @@ def test_fetch_survives_network_errors(monkeypatch, tmp_path):
     ok = ephemeris_fetch.fetch([ROOT / "profiles/calc/parashari_v1.yaml"], tmp_path, logs.append)
     assert not ok and sum("failed" in s for s in logs) == 3
     assert not any(tmp_path.iterdir())
+
+
+# -- D9: method, vargas, condition and aspects in the report --------------------------------
+
+def test_default_method_is_stated_and_sections_present():
+    code, out, _ = run(*PUNE)
+    assert code == EXIT_OK
+    assert out.startswith("Method     parashari (default):")  # INP-5
+    for section in ("Dignity and condition", "Aspects cast (graha drishti)", "Varga signs"):
+        assert section in out
+    assert "Ve Venus   Exalted        gandanta" in out
+    assert "MD Mars     in house 3; rules 3, 10; moolatrikona" in out
+
+
+def test_bnn_method_and_native_gender():
+    code, out, _ = run(*PUNE, "--method", "bnn", "--charts", "D1")
+    assert code == EXIT_OK and "Method     bnn:" in out and "Profile    bnn_v1" in out
+    assert "BNN links" in out and "give --native-gender" in out
+    code, out, _ = run(*PUNE, "--method", "bnn", "--native-gender", "female", "--charts", "D1")
+    assert "Native karaka: Venus" in out
+
+
+def test_all_vargas_and_unknown_names():
+    code, out, _ = run(*PUNE, "--vargas", "all", "--charts", "D60")
+    assert code == EXIT_OK and "Shashtiamsa D60" not in out and "Shashtiamsa (D60)" in out
+    assert "D2   D3   D4   D7   D9   D10  D12  D16  D20  D24  D27  D30  D40  D45  D60" in out
+    code, _, err = run(*PUNE, "--vargas", "D5")
+    assert code == EXIT_NEEDS_INPUT and "unknown varga D5" in err
+    code, _, err = run(*PUNE, "--method", "kp")
+    assert code == EXIT_NEEDS_INPUT and "unknown method" in err
+    code, _, err = run(*PUNE, "--method", "parashari", "--profile", "bnn_v1")
+    assert code == EXIT_UNSUPPORTED and "not a calculation profile of method parashari" in err

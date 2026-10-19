@@ -1,0 +1,14 @@
+id: bnn
+school: bnn
+lineage: rao
+description: Bhrigu Nandi Nadi as published by R. G. Rao; later lineages are labelled separately
+status: draft
+calc_profiles: [bnn_v1]
+default_calc_profile: bnn_v1
+supported_topics: []
+rule_families: []
+core_sources: []
+optional_inputs: [native_gender]   # BNN uses Jupiter or Venus as the native's karaka (INP-8)
+known_gaps:
+  - which relations bnn.linked counts is a lineage decision for the rule cards (G-B1)
+  - nodes excluded from the retrograde-in-previous-sign variant pending review

@@ -2,6 +2,7 @@
 
     astro chart --date 1985-03-14 --time 06:42 --place "Pune, IN"
     astro chart --date 1985-03-14 --lat 18.52 --lon 73.85 --tz Asia/Kolkata --style north
+    astro chart --date 1985-03-14 --time 06:42 --place Pune --method bnn --vargas all
     astro places Springfield
     astro ephemeris fetch
 
@@ -101,9 +102,18 @@ def build_parser() -> argparse.ArgumentParser:
                    help="how precise the recorded time is (sets the uncertainty)")
     c.add_argument("--uncertainty", type=_uncertainty,
                    help="± minutes, 0–720 (overrides --precision)")
-    c.add_argument("--profile", default="parashari_v1", help="calculation profile ID")
-    c.add_argument("--vargas", default="D1,D9,D10", help="comma-separated, e.g. D1,D9")
-    c.add_argument("--style", choices=["south", "north"], default="south")
+    c.add_argument("--method", default=None,
+                   help="parashari (default) or bnn; the method decides the default profile")
+    c.add_argument("--profile", default=None,
+                   help="calculation profile ID (default: the method's default profile)")
+    c.add_argument("--native-gender", choices=["male", "female"],
+                   help="optional BNN input: Jupiter or Venus signifies the native (INP-8)")
+    c.add_argument("--charts", default="D1,D9,D10",
+                   help="divisional charts to draw, e.g. D1,D9 (any of D1…D60)")
+    c.add_argument("--vargas", default="D1,D9,D10",
+                   help='divisional signs to tabulate, comma-separated, or "all"')
+    c.add_argument("--style", choices=["south", "north"], default="south",
+                   help="chart layout: south (fixed signs) or north (fixed houses)")
     c.add_argument("--as-of", type=_instant, help="instant for the current dasha (default now)")
     c.add_argument("--json", action="store_true", help="machine-readable output")
 
@@ -148,14 +158,43 @@ def _resolve_place(args, err) -> tuple[Place | None, float, float] | int:
     return EXIT_NEEDS_INPUT
 
 
+def _varga_ids(home) -> tuple[str, ...]:
+    from ruamel.yaml import YAML
+
+    data = YAML(typ="safe").load((home / "ontology" / "vargas.yaml").read_text())
+    return tuple(data["vargas"])
+
+
+def _varga_list(text: str, known: tuple[str, ...]) -> tuple[str, ...]:
+    if text.strip().lower() == "all":
+        return known
+    items = tuple(dict.fromkeys(v.strip().upper() for v in text.split(",") if v.strip()))
+    unknown = [v for v in items if v not in known]
+    if unknown:
+        raise ValueError(f"unknown varga {', '.join(unknown)}; available: {', '.join(known)}")
+    return items
+
+
 def cmd_chart(args, out, err) -> int:
     from astro.cli.render import render
     from astro.cli.report import ChartRequest, build
 
     home = astro_home()
-    if not (home / "profiles" / "calc" / f"{args.profile}.yaml").is_file():
+    if args.profile and not (home / "profiles" / "calc" / f"{args.profile}.yaml").is_file():
         known = sorted(p.stem for p in (home / "profiles" / "calc").glob("*.yaml"))
         err(f"unknown profile {args.profile!r}; available: {', '.join(known)}")
+        return EXIT_NEEDS_INPUT
+    methods = sorted(p.stem for p in (home / "profiles" / "method").glob("*.yaml"))
+    method = args.method or "parashari"
+    if method not in methods:
+        err(f"unknown method {method!r}; available: {', '.join(methods)}")
+        return EXIT_NEEDS_INPUT
+    known_vargas = _varga_ids(home)
+    try:
+        vargas = _varga_list(args.vargas, known_vargas)
+        charts = _varga_list(args.charts, known_vargas)
+    except ValueError as e:
+        err(str(e))
         return EXIT_NEEDS_INPUT
     resolved = _resolve_place(args, err)
     if isinstance(resolved, int):
@@ -166,8 +205,10 @@ def cmd_chart(args, out, err) -> int:
         year=y, month=m, day=d, local_time=args.time, latitude=lat, longitude=lon,
         place=place, timezone=args.tz, utc_offset_minutes=args.utc_offset,
         calendar=args.calendar, precision=args.precision, uncertainty_minutes=args.uncertainty,
-        profile_id=args.profile, vargas=tuple(v.strip().upper() for v in args.vargas.split(",")),
-        as_of=args.as_of, elevation_m=args.elevation)
+        method=method, method_given=args.method is not None, profile_id=args.profile,
+        native_gender=args.native_gender, vargas=vargas, charts=charts,
+        as_of=args.as_of, elevation_m=args.elevation, place_query=args.place,
+        place_source=default_gazetteer().source if place is not None else None)
     try:
         report = build(req)
     except ValidationError as e:

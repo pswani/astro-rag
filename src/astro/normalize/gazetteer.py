@@ -34,6 +34,13 @@ class Place:
     latitude: float
     longitude: float
     population: int
+    geonames_id: int | None = None  # the cities1000 table in reverse_geocode carries none
+
+    def provenance(self, source: str, query: str) -> dict:
+        return {"source": source, "query": query, "label": self.label, "name": self.name,
+                "state": self.state, "country_code": self.country_code,
+                "latitude": self.latitude, "longitude": self.longitude,
+                "geonames_id": self.geonames_id}
 
     @property
     def label(self) -> str:

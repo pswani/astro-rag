@@ -74,3 +74,18 @@ def assess_many(lon: Fn, t: float, u_days: float, *, base_width: float,
         out[name] = Assessment("sensitive", (min(before) if before else None,
                                              min(after) if after else None))
     return out
+
+
+def assess_targets(lon: Fn, t: float, u_days: float, *, targets: list[float], step: float,
+                   speed: Fn | None = None) -> Assessment:
+    """Sensitivity of a fact that changes when `lon` crosses any of `targets` (degrees)."""
+    if u_days <= 0 or not targets:
+        return STABLE
+    cs = crossings(lon, t - u_days, t + u_days, step=min(step, u_days), speed=speed,
+                   targets=targets)
+    if not cs:
+        return STABLE
+    before = [(t - c.jd) / MINUTE for c in cs if c.jd <= t]
+    after = [(c.jd - t) / MINUTE for c in cs if c.jd > t]
+    return Assessment("sensitive", (min(before) if before else None,
+                                    min(after) if after else None))

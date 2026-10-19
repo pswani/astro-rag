@@ -6,7 +6,7 @@ from astro.calc.context import ChartContext
 from astro.calc.core.angles import NAKSHATRA_SPAN, PADA_SPAN, SIGN_SPAN
 from astro.calc.ephemeris.port import BODIES, Body
 from astro.calc.model import ChartFact
-from astro.calc.sensitivity import UNKNOWN, Assessment, assess, assess_many
+from astro.calc.sensitivity import UNKNOWN, Assessment, assess, assess_many, assess_targets
 from astro.calc.solver import find_stations
 
 LAGNA = "lagna"
@@ -36,6 +36,19 @@ def assess_width(ctx: ChartContext, body: str, width: float) -> Assessment:
     speed = ctx.speed_fn(body) if ctx.needs_speed(body) else None  # type: ignore[arg-type]
     return assess(ctx.lon_fn(body), b.jd_ut, b.u_days, width=width,  # type: ignore[arg-type]
                   step=ctx.step_days(body), speed=speed)
+
+
+def assess_boundaries(ctx: ChartContext, body: str, targets: list[float]) -> Assessment:
+    """Sensitivity of a fact of `body` that changes at the given absolute longitudes."""
+    b = ctx.birth
+    if body == LAGNA:
+        if not b.time_known:
+            return UNKNOWN
+        return assess_targets(ctx.lagna_fn(), b.jd_ut, b.u_days, targets=targets,
+                              step=ctx.step_days(LAGNA))
+    speed = ctx.speed_fn(body) if ctx.needs_speed(body) else None  # type: ignore[arg-type]
+    return assess_targets(ctx.lon_fn(body), b.jd_ut, b.u_days,  # type: ignore[arg-type]
+                          targets=targets, step=ctx.step_days(body), speed=speed)
 
 
 ZODIAC_MULTIPLES = {"pada": 1, "nakshatra": 4, "sign": 9}  # in pada spans

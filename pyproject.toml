@@ -21,6 +21,10 @@ dependencies = [
 [project.scripts]
 astro = "astro.cli.main:main"
 
+[project.entry-points."astro.methods"]
+parashari = "astro.methods.parashari:ParashariAdapter"
+bnn = "astro.methods.bnn:BnnAdapter"
+
 [project.optional-dependencies]
 # offline place-name lookup (GeoNames-derived city table) and coordinates → time zone
 geo = ["timezonefinder>=6.5", "reverse_geocode>=1.6"]

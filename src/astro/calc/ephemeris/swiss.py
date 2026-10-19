@@ -33,7 +33,7 @@ _PLANETS = {
     "sun": swe.SUN, "moon": swe.MOON, "mars": swe.MARS, "mercury": swe.MERCURY,
     "jupiter": swe.JUPITER, "venus": swe.VENUS, "saturn": swe.SATURN,
 }
-_HSYS = {"whole_sign": b"W", "sripati": b"S"}
+_HSYS = {"whole_sign": b"W", "sripati": b"S", "placidus": b"P"}
 _RISE = {
     "hindu_rising": swe.BIT_HINDU_RISING,
     "upper_limb_refraction": 0,
@@ -137,21 +137,24 @@ class SwissEphemeris:
             self._check(ret, jd_ut)
             return aya
 
-    def _houses(self, jd_ut: float, lat: float, lon: float, profile: CalcProfile):
+    def _houses(self, jd_ut: float, lat: float, lon: float, profile: CalcProfile,
+                system: str):
         with _LOCK:
             self._prepare(profile, jd_ut)
             try:
-                return swe.houses_ex(jd_ut, lat, lon, _HSYS[profile.house_system],
-                                     swe.FLG_SIDEREAL)
-            except swe.Error as e:
-                raise CalcError(Reason.UNSUPPORTED_FEATURE, f"houses: {e}") from e
+                return swe.houses_ex(jd_ut, lat, lon, _HSYS[system], swe.FLG_SIDEREAL)
+            except swe.Error as e:  # e.g. Placidus above the polar circles (design §7.10)
+                raise CalcError(Reason.UNSUPPORTED_FEATURE,
+                                f"{system} houses undefined at latitude {lat}: {e}") from e
 
     def ascendant(self, jd_ut: float, lat: float, lon: float, profile: CalcProfile) -> float:
-        return norm360(self._houses(jd_ut, lat, lon, profile)[1][0])
+        # the Lagna does not depend on the house system; whole-sign never fails
+        return norm360(self._houses(jd_ut, lat, lon, profile, "whole_sign")[1][0])
 
     def cusps(self, jd_ut: float, lat: float, lon: float,
               profile: CalcProfile) -> tuple[float, ...]:
-        return tuple(norm360(c) for c in self._houses(jd_ut, lat, lon, profile)[0][:12])
+        cs = self._houses(jd_ut, lat, lon, profile, profile.house_system)[0][:12]
+        return tuple(norm360(c) for c in cs)
 
     def rise_set(self, jd_ut: float, lat: float, lon: float, elevation_m: float,
                  kind: Literal["rise", "set"], profile: CalcProfile) -> float | None:

@@ -197,10 +197,9 @@ def _fact(res: FeatureResult | None, kind: str, subject: str, **kw) -> ChartFact
 
 
 def planet_table(report: ChartReport) -> list[str]:
-    pos, houses, var = report.get("positions"), report.get("houses"), report.get("vargas")
-    vargas = [v for v in report.request.vargas if v != "D1"]
+    pos, houses = report.get("positions"), report.get("houses")
     head = (f"{'Body':<10} {'Sign':<12} {'Degree':<11} {'Nakshatra':<20} {'Lord':<8} "
-            f"{'House':>5} {'R':>1}  " + " ".join(f"{v:<4}" for v in vargas))
+            f"{'House':>5} {'R':>1}")
     out = [head, "-" * len(head)]
     if pos is None:
         return out + ["positions unavailable"]
@@ -219,16 +218,125 @@ def planet_table(report: ChartReport) -> list[str]:
                                       else f"{house.value}{mark(house)}")
         rflag = "R" if retro is not None and retro.value and subj not in (
             "rahu", "ketu", "lagna") else ""
-        vcols = []
-        for v in vargas:
-            vf = _fact(var, "varga_sign", s, varga=v)
-            vcols.append("?" if vf is None or vf.value is None
-                         else SIGN_ABBR[SIGNS.index(vf.value.split(':')[1])] + mark(vf))
         out.append(
             f"{ABBR[subj] + ' ' + title(s):<10} {title(sign.value) + mark(sign):<12} "
             f"{to_dms(lon.value) + mark(pada):<11} "
             f"{(title(nak.value) + ' ' + str(pada.value)) + mark(nak):<20} "
-            f"{title(lord.value):<8} {h:>5} {rflag:>1}  " + " ".join(f"{c:<4}" for c in vcols))
+            f"{title(lord.value):<8} {h:>5} {rflag:>1}".rstrip())
+    return out
+
+
+DIGNITY_SHORT = {"exalted": "Exalted", "moolatrikona": "Moolatrikona", "own": "Own sign",
+                 "great_friend": "Great friend", "friend": "Friend", "neutral": "Neutral",
+                 "enemy": "Enemy", "great_enemy": "Great enemy", "debilitated": "Debilitated"}
+
+
+def _abbr(ids: tuple[str, ...] | None) -> str:
+    if not ids:
+        return "-"
+    return " ".join(ABBR.get(i.split(":", 1)[-1], i) for i in ids)
+
+
+def condition_table(report: ChartReport) -> list[str]:
+    """Dignity and condition (CALC-2), aspects received and conjunctions (REL-1)."""
+    cond, asp = report.get("condition"), report.get("aspects")
+    if cond is None:
+        return ["condition unavailable"]
+    head = f"{'Body':<10} {'Dignity':<14} {'Condition':<24} {'Aspected by':<14} Conjunct"
+    out = [head, "-" * len(head)]
+    for b in BODIES:
+        s = f"graha:{b}"
+        dig = _fact(cond, "dignity", s)
+        dig_txt = "-" if dig is None or dig.value is None else \
+            DIGNITY_SHORT[dig.value.split(":")[1]] + mark(dig)
+        flags = []
+        comb = _fact(cond, "combust", s)
+        if comb is not None and comb.value:
+            dist = _fact(cond, "sun_distance", s)
+            flags.append(f"combust {dist.value:.1f}°{mark(comb)}")
+        war = _fact(cond, "graha_yuddha", s)
+        if war is not None and war.value != "none":
+            flags.append(f"war {'won' if war.value == 'winner' else 'lost'}{mark(war)}")
+        for kind, label in (("gandanta", "gandanta"), ("rashi_sandhi", "sandhi")):
+            f = _fact(cond, kind, s)
+            if f is not None and f.value:
+                flags.append(label + mark(f))
+        by = _fact(asp, "aspected_by", s, frame="rashi")
+        conj = _fact(asp, "conjunct_with", s, frame="rashi")
+        out.append(f"{ABBR[b] + ' ' + title(s):<10} {dig_txt:<14} "
+                   f"{', '.join(flags) or '-':<24} {_abbr(by.value if by else None):<14} "
+                   f"{_abbr(conj.value if conj else None)}")
+    return out
+
+
+def aspects_table(report: ChartReport) -> list[str]:
+    """Graha drishti cast by each body, as signs and houses from the Lagna."""
+    asp, pos = report.get("aspects"), report.get("positions")
+    if asp is None or pos is None:
+        return ["aspects unavailable"]
+    lagna = _fact(pos, "sign", "lagna")
+    lagna_i = None if lagna is None or lagna.value is None else \
+        SIGNS.index(lagna.value.split(":")[1])
+    out = []
+    for b in BODIES:
+        f = _fact(asp, "aspects_signs", f"graha:{b}", frame="rashi")
+        if f is None or not f.value:
+            out.append(f"{ABBR[b] + ' ' + title('graha:' + b):<10} -")
+            continue
+        idx = [SIGNS.index(v.split(":")[1]) for v in f.value]
+        signs = ", ".join(SIGN_ABBR[i] for i in idx)
+        houses = "" if lagna_i is None else \
+            "  houses " + ", ".join(str((i - lagna_i) % 12 + 1) for i in idx)
+        out.append(f"{ABBR[b] + ' ' + title('graha:' + b):<10} {signs}{houses}")
+    return out
+
+
+def varga_table(report: ChartReport) -> list[str]:
+    var = report.get("vargas")
+    vargas = [v for v in report.request.vargas if v != "D1"]
+    if var is None or not vargas:
+        return []
+    head = f"{'Body':<10} " + " ".join(f"{v:<4}" for v in vargas)
+    out = ["Varga signs", head, "-" * len(head)]
+    for subj in ("lagna", *BODIES):
+        s = f"graha:{subj}" if subj != "lagna" else "lagna"
+        cols = []
+        for v in vargas:
+            vf = _fact(var, "varga_sign", s, varga=v)
+            cols.append("?" if vf is None or vf.value is None
+                        else SIGN_ABBR[SIGNS.index(vf.value.split(':')[1])] + mark(vf))
+        row = f"{ABBR[subj] + ' ' + title(s):<10} " + " ".join(f"{c:<4}" for c in cols)
+        out.append(row.rstrip())
+    vot = [ABBR[b] for b in ("lagna", *BODIES)
+           if (f := _fact(var, "vargottama", "lagna" if b == "lagna" else f"graha:{b}"))
+           is not None and f.value]
+    if vot:
+        out.append(f"Vargottama (same sign in D1 and D9): {' '.join(vot)}")
+    return out
+
+
+def bnn_table(report: ChartReport) -> list[str]:
+    links, kar = report.get("bnn_relations"), report.get("bnn_karakas")
+    if links is None:
+        return []
+    out = ["BNN links (signs counted from each graha)"]
+    by_source: dict[str, dict[int, list[str]]] = {}
+    for r in links.relations:
+        if r.kind == "bnn_link":
+            label = ABBR[r.target.split(":")[1]] + ("(r)" if r.provenance.get("via")
+                                                     == "retro_previous_sign" else "")
+            by_source.setdefault(r.source, {}).setdefault(int(r.value), []).append(label)
+    for b in BODIES:
+        rows = by_source.get(f"graha:{b}", {})
+        parts = [f"{name} {' '.join(rows[k])}" for k, name in
+                 ((1, "with"), (5, "5th"), (9, "9th"), (2, "2nd"), (12, "12th"), (7, "7th"))
+                 if rows.get(k)]
+        out.append(f"  {ABBR[b] + ' ' + title('graha:' + b):<10} {'; '.join(parts) or '-'}")
+    if kar is not None:
+        native = _fact(kar, "native_karaka", "native", frame="bnn")
+        out.append("  Native karaka: " + (title(native.value) if native and native.value
+                                          else "give --native-gender to choose Jupiter/Venus"))
+    out.append("  (r) = through the retrograde-in-previous-sign variant")
     return out
 
 
@@ -285,6 +393,7 @@ def dasha_table(report: ChartReport) -> list[str]:
                 out.append(f"  {f.subject.rsplit(':', 1)[-1]} sandhi: boundary "
                            f"{f.provenance['boundary_utc'][:10]} "
                            f"({f.provenance['distance_days']:.0f} days away)")
+        out += _period_lords(report)
     early, late = md0.boundary_margin_days
     if early is not None and late is not None:
         out.append(f"Dasha dates shift by {early:+.1f} / {late:+.1f} days if birth was "
@@ -295,6 +404,29 @@ def dasha_table(report: ChartReport) -> list[str]:
     return out
 
 
+def _period_lords(report: ChartReport) -> list[str]:
+    """One line per active lord from the period-lord context (DAS-5)."""
+    cx, cond, houses = report.get("dasha_context"), report.get("condition"), report.get("houses")
+    if cx is None:
+        return []
+    out = []
+    for p in cx.periods:
+        subj = f"dasha:vimshottari:{p.level}"
+        lord = p.lord
+        rules = _fact(cx, "lord_houses", subj)
+        house = _fact(houses, "house", lord, frame="lagna")
+        dig = _fact(cond, "dignity", lord)
+        bits = [f"in house {house.value}" if house and house.value else None,
+                ("rules " + ", ".join(h.split(":")[1] for h in rules.value))
+                if rules and rules.value else None,
+                DIGNITY_SHORT[dig.value.split(":")[1]].lower() if dig and dig.value else None]
+        rel = _fact(cx, "from_md_lord", subj)
+        if rel is not None:
+            bits.append(f"{rel.value} from the MD lord")
+        out.append(f"  {p.level} {title(lord):<8} " + "; ".join(b for b in bits if b))
+    return out
+
+
 def header(report: ChartReport) -> list[str]:
     req, n = report.request, report.normalization
     place = req.place.label if req.place else "coordinates"
@@ -302,7 +434,10 @@ def header(report: ChartReport) -> list[str]:
     zone = off.get("zone") or format_offset(off.get("minutes", 0))
     when = (f"{req.year:04d}-{req.month:02d}-{req.day:02d} "
             f"{req.local_time.strftime('%H:%M') if req.local_time else '(time unknown)'}")
+    method = report.method
+    default = " (default)" if req.method == "parashari" and not req.method_given else ""
     lines = [
+        f"Method     {method.id}{default}: {method.description} [{method.status}]",
         f"Birth      {when} {zone} ({req.calendar})   UTC {n.utc:%Y-%m-%d %H:%M}",
         f"Place      {place}  {abs(req.latitude):.4f}{'N' if req.latitude >= 0 else 'S'} "
         f"{abs(req.longitude):.4f}{'E' if req.longitude >= 0 else 'W'}",
@@ -333,12 +468,20 @@ def notes(report: ChartReport) -> list[str]:
     return out
 
 
+VARGA_NAMES = {"D1": "Rasi", "D2": "Hora", "D3": "Drekkana", "D4": "Chaturthamsa",
+               "D7": "Saptamsa", "D9": "Navamsa", "D10": "Dasamsa", "D12": "Dwadasamsa",
+               "D16": "Shodasamsa", "D20": "Vimsamsa", "D24": "Chaturvimsamsa",
+               "D27": "Bhamsa", "D30": "Trimsamsa", "D40": "Khavedamsa", "D45": "Akshavedamsa",
+               "D60": "Shashtiamsa"}
+
+
 def render(report: ChartReport, style: str = "south") -> str:
     chart = south_chart if style == "south" else north_chart
     blocks: list[list[str]] = [header(report)]
-    for v in report.request.vargas:
-        caption = {"D1": "Rasi", "D9": "Navamsa", "D10": "Dasamsa"}.get(v, v)
-        blocks.append(chart(report, v, caption))
-    blocks += [planet_table(report), ["Panchanga at birth"] + panchanga_table(report),
+    for v in report.request.charts:
+        blocks.append(chart(report, v, VARGA_NAMES.get(v, v)))
+    blocks += [planet_table(report), ["Dignity and condition"] + condition_table(report),
+               ["Aspects cast (graha drishti)"] + aspects_table(report), varga_table(report),
+               bnn_table(report), ["Panchanga at birth"] + panchanga_table(report),
                ["Vimshottari dasha"] + dasha_table(report), ["Notes"] + notes(report)]
-    return "\n\n".join("\n".join(b) for b in blocks) + "\n"
+    return "\n\n".join("\n".join(b) for b in blocks if b) + "\n"

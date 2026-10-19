@@ -9,13 +9,13 @@ from datetime import UTC, datetime, time, timedelta, timezone, tzinfo
 from typing import Any
 
 from astro.calc.context import ChartContext
-from astro.calc.core.status import Status
-from astro.calc.engine import FeatureRequest as R
+from astro.calc.core.status import CalcError, Reason, Status
+from astro.calc.engine import Engine
 from astro.calc.ephemeris.swiss import SwissEphemeris
 from astro.calc.model import FeatureResult
 from astro.calc.profile import CalcProfile, load_profile
 from astro.calc.refdata import YamlReferenceData
-from astro.calc.registry import default_engine
+from astro.methods.base import MethodProfile, MethodRegistry
 from astro.normalize.birth import BirthInput, Normalization, chart_id, load_zone, normalize_birth
 from astro.normalize.gazetteer import Place
 from astro.resources import astro_home, ephemeris_dir
@@ -35,11 +35,16 @@ class ChartRequest:
     calendar: str = "gregorian"
     precision: str = "minute"
     uncertainty_minutes: float | None = None
-    profile_id: str = "parashari_v1"
-    vargas: tuple[str, ...] = ("D1", "D9", "D10")
+    method: str = "parashari"
+    profile_id: str | None = None   # default: the method profile's default calc profile
+    vargas: tuple[str, ...] = ("D1", "D9", "D10")   # computed and tabulated
+    charts: tuple[str, ...] = ("D1", "D9", "D10")   # drawn; always computed too
+    method_given: bool = False
     as_of: datetime | None = None   # for the current dasha; default: now
     native_gender: str | None = None
     elevation_m: float = 0.0
+    place_query: str | None = None
+    place_source: str | None = None
 
 
 @dataclass
@@ -47,6 +52,7 @@ class ChartReport:
     request: ChartRequest
     normalization: Normalization
     profile: CalcProfile | None = None
+    method: MethodProfile | None = None
     chart_id: str | None = None
     results: dict[str, FeatureResult] = field(default_factory=dict)
     local_tz: tzinfo | None = None
@@ -70,6 +76,7 @@ class ChartReport:
                       for k, v in self.request.__dict__.items() if k != "place"},
             "place": self.request.place.__dict__ if self.request.place else None,
             "normalization": n.model_dump(mode="json"),
+            "method": self.method.model_dump(mode="json") if self.method else None,
             "profile": self.profile.model_dump(mode="json") if self.profile else None,
             "chart_id": self.chart_id,
             "as_of": self.as_of.isoformat() if self.as_of else None,
@@ -85,16 +92,27 @@ def _chart_key() -> bytes:
 
 def build(req: ChartRequest) -> ChartReport:
     home = astro_home()
-    profile = load_profile(home / "profiles" / "calc" / f"{req.profile_id}.yaml")
+    # draft methods are allowed here: the CLI states the status in every report (design §7.10)
+    method, adapter = MethodRegistry(home / "profiles" / "method").get(req.method,
+                                                                       allow_draft=True)
+    profile_id = req.profile_id or method.default_calc_profile
+    if profile_id not in method.calc_profiles:
+        raise CalcError(Reason.UNSUPPORTED_PROFILE,
+                        f"{profile_id} is not a calculation profile of method {method.id} "
+                        f"({', '.join(method.calc_profiles)})")
+    profile = load_profile(home / "profiles" / "calc" / f"{profile_id}.yaml")
     birth = BirthInput(
         year=req.year, month=req.month, day=req.day, calendar=req.calendar,
         local_time=req.local_time,
         time_precision="unknown" if req.local_time is None else req.precision,  # type: ignore
         uncertainty_minutes=req.uncertainty_minutes, latitude=req.latitude,
         longitude=req.longitude, elevation_m=req.elevation_m, timezone=req.timezone,
-        utc_offset_minutes=req.utc_offset_minutes)
+        utc_offset_minutes=req.utc_offset_minutes,
+        place_provenance=req.place.provenance(req.place_source or "gazetteer",
+                                              req.place_query or req.place.name)
+        if req.place else None)
     norm = normalize_birth(birth, expected_tzdata=profile.time.tzdata)
-    report = ChartReport(req, norm, profile)
+    report = ChartReport(req, norm, profile, method)
     if not report.ok:
         return report
     zone = norm.provenance["offset"].get("zone")
@@ -106,14 +124,9 @@ def build(req: ChartRequest) -> ChartReport:
     inputs = {"native_gender": req.native_gender} if req.native_gender else {}
     ctx = ChartContext(report.chart_id, norm.birth, profile, eph, refdata, inputs)
     report.as_of = (req.as_of or datetime.now(UTC)).astimezone(UTC)
-    requests = {
-        "positions": R.of("positions"),
-        "houses": R.of("houses"),
-        "vargas": R.of("vargas", vargas=req.vargas),
-        "panchanga": R.of("panchanga"),
-        "vimshottari": R.of("vimshottari"),
-        "dasha_active": R.of("dasha_active", as_of=report.as_of.isoformat()),
-    }
-    out = default_engine().run(ctx, list(requests.values()))
-    report.results = {k: out[r] for k, r in requests.items()}
+    vargas = tuple(dict.fromkeys((*req.vargas, *req.charts)))
+    plan = {"as_of": report.as_of.isoformat(), "vargas": vargas}
+    requests = adapter.features(plan)
+    out = Engine(adapter.feature_set()).run(ctx, requests)
+    report.results = {r.feature_id: out[r] for r in requests}
     return report

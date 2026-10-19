@@ -34,7 +34,7 @@ def test_profiles_load_and_hash_is_stable():
 
 @pytest.mark.parametrize("mutate", [
     lambda d: d.update(ayanamsa={"id": "fagan_bradley"}),    # unknown enum value
-    lambda d: d.update(house_system="placidus"),             # not supported yet
+    lambda d: d.update(house_system="koch"),                 # not a supported system
     lambda d: d.update(unknown_setting=1),                   # unknown key
     lambda d: d["nodes"].pop("retrograde"),                  # missing required setting
     lambda d: d.update(provisional=["nodes.nonexistent"]),   # bad provisional path

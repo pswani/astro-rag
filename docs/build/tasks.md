@@ -89,6 +89,25 @@ Undecided conventions (calc-review §5, decisions 2–4) are implemented as **pr
 - [x] C5 CLI: `astro chart`, `astro places`, exit codes (0 ok, 2 needs input, 3 unsupported), `python -m astro`
 - [x] C6 Tests: gazetteer, renderers, CLI end-to-end (incl. ambiguous place, DST fold, unknown time), review and fix
 
+## D Alignment with requirements and design (review → fix → test loop)
+
+Gaps found by tracing requirements §5.1–§5.8 and design §6–§7 against the code. Undecided conventions
+are implemented as profile options with provisional values, listed in `provisional:`.
+
+- [ ] D1 INP-1: record place provenance (source, query, label, location ID when available) in the normalization
+- [ ] D2 CALC-3: Placidus house system; `unsupported_feature` where cusps are undefined (polar latitudes)
+- [ ] D3 CALC-2: condition — dignity (with precedence and friendship basis), combustion, graha yuddha, gandanta, rashi sandhi, each with sensitivity (G-C5…G-C8)
+- [ ] D4 REL-1: Parashari graha drishti with special aspects, node aspects per profile, conjunctions (same sign or orb), aspects received (G-R1)
+- [ ] D5 TRN-3: Jupiter–Saturn double transit and Rahu–Ketu axis over natal points as intervals
+- [ ] D6 DAS-5: period-lord context for the active MD/AD/PD lords, holding fact IDs (G-D3)
+- [ ] D7 Design §7.10 / INP-5: `MethodAdapter` protocol, method profiles, registry; default method stated in output
+- [ ] D8 VAR-2: remaining Shodashvarga with one declared Parashari construction each (spec extended for steps, absolute starts, elements and tables); PyJHora oracle
+- [ ] D9 CLI: dignity and condition flags, aspects, any varga, method and provisional notes
+- [ ] D10 User guide (README)
+- [ ] D11 Review loop until clean: code review, alignment re-check, fixes with regression tests
+
+Still out of scope: functional roles (G-R2 needs a sourced table), Shadbala (G-S2), PAN-3 (G-PN2), phase-7 items.
+
 ### C6 review findings
 
 | # | Finding | Fix |
