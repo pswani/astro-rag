@@ -75,16 +75,42 @@ Undecided conventions (calc-review §5, decisions 2–4) are implemented as **pr
 
 ## B7 Verification
 
-- [ ] B7.1 Property tests (Hypothesis): index ranges, dasha tiling, `active_chain` uniqueness, `periods_in` = brute force, varga closed forms, loop crossings (calc-review §4.3)
+- [x] B7.1 Property tests (Hypothesis): index ranges, dasha tiling, `active_chain` uniqueness, `periods_in` = brute force, varga closed forms, loop crossings (calc-review §4.3)
 - [x] B7.2 Oracle tests against PyJHora (test-only, AGPL): positions, Lagna, panchanga, D9/D10, Vimshottari — 8 charts, 48 checks; AD starts agree to < 1 min under matched conventions
-- [ ] B7.3 Determinism: byte-identical re-run of a full feature run (CALC-9)
-- [ ] B7.4 Review pass over the whole layer; fix findings
+- [x] B7.3 Determinism: byte-identical re-run of a full feature run (CALC-9) — same bytes across re-runs, the cache and a fresh process
+- [x] B7.4 Review pass over the whole layer; fix findings — 10 findings, all fixed with regression tests (`tests/calc/test_review_fixes.py`); see below
+
+## B7.4 review findings
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 | Nakshatra and pada ingresses at the same instant got the same event ID | ID carries the ingress kind and pada |
+| 2 | One dependency cycle failed every requested feature | Only cycle members fail; dependents become `dependency_unavailable` |
+| 3 | Exceptions in `requires()` or the cache key escaped `Engine.run()` | Both become feature-local `failed` / `tool_error` |
+| 4 | A tz-aware `local_time` was misread as a DST gap, or its offset dropped | Rejected at input: the clock time must be naive |
+| 5 | Transit retrograde ignored the profile's node rule | Shared `is_retrograde()` |
+| 6 | `dasha_active` reported a naive `as_of` as `tool_error` | Shared `parse_utc_instant()` → `missing_input` |
+| 7 | `dasha_active` hard-coded depth 3; absent levels reported sandhi `False` | Uses the profile levels; absent levels are `unknown` |
+| 8 | `set_ephe_path` on every call (6× slower) | Set once; the file actually read is verified after every calculation, so a path changed elsewhere is detected and reset |
+| 9 | Three sensitivity searches per body; vargottama repeated D9 | One pada-width search classifies sign/nakshatra/pada; vargas reuse it |
+| 10 | Stations and samples recomputed per crossing call | `crossings(stations=…)`; raw samples reused |
+
+A full 15-feature run went from about 1.6 s to 0.27 s after 8–10.
+
+## How to run
+
+```
+pip install -e ".[dev,oracle]"
+python scripts/fetch_ephemeris.py      # Swiss Ephemeris files, SHA-256 pinned in the profiles
+ruff check src tests scripts && lint-imports && pytest
+```
 
 ## Change log
 
 | Date | Change |
 |---|---|
 | 2026-10-19 | List created |
+| 2026-10-19 | B7 done: 168 tests, clean-venv CI check, oracle extra declares PyJHora's undeclared imports (CI fails instead of skipping) |
 | 2026-10-19 | B6 done (B6.3b blocked on G-R1). Real-data fixture: Saturn crosses natal Mercury three times in 2026–27 (TRN-2 acceptance); Sade Sati phases verified on a synthetic ephemeris |
 | 2026-10-19 | B4, B5.1–B5.7, B7.2 done. Oracle findings: PyJHora defaults to true geometric positions (Sun ~20″ from apparent), the true node and a per-chart *true* sidereal year; `drik.dhasavarga` uses cyclic (parivritti) D10, so `charts.divisional_chart(chart_method=1)` is the Parashari oracle. Recorded as G-C12 and G-D4 in calc-review |
 | 2026-10-19 | B0–B3 done. Findings fixed during the loop: exact boundary indexing (Hypothesis found 30° → wrong pada via `floor(λ / (10/3))`); contact detection uses adjacent monotone pieces instead of a 1-day window; Swiss Ephemeris coverage start corrected to JD 2378497.0 (2378496.5 already falls back to Moshier); nutation does not change sidereal positions (G-C4 downgraded) |

@@ -21,6 +21,7 @@ from astro.calc.ephemeris.port import Body, BodyState, Eclipse, EphemerisInfo
 from astro.calc.profile import CalcProfile
 
 _LOCK = threading.RLock()
+_CURRENT_PATH: list[str | None] = [None]  # the path this module last set (process-global state)
 
 _SIDM = {
     "lahiri": swe.SIDM_LAHIRI,
@@ -60,6 +61,7 @@ class SwissEphemeris:
                             f"swisseph {swe.version} != profile {profile.ephemeris.version}")
         self._info = EphemerisInfo("swisseph", swe.version, shas)
         self._files = set(shas)
+        self._path = str(self._dir.resolve())
 
     # -- helpers ----------------------------------------------------------------------------
     def _prepare(self, profile: CalcProfile, jd_ut: float) -> None:
@@ -69,8 +71,30 @@ class SwissEphemeris:
             c = profile.ephemeris.coverage
             raise CalcError(Reason.OUT_OF_RANGE,
                             f"JD {jd_ut} outside ephemeris coverage [{c.start_jd}, {c.end_jd})")
-        swe.set_ephe_path(str(self._dir))
-        swe.set_sid_mode(_SIDM[profile.ayanamsa.id], 0, 0)
+        if _CURRENT_PATH[0] != self._path:
+            swe.set_ephe_path(self._path)  # closes open files: only when it changes
+            _CURRENT_PATH[0] = self._path
+        swe.set_sid_mode(_SIDM[profile.ayanamsa.id], 0, 0)  # cheap; other code may change it
+
+    def _calc(self, jd_ut: float, code: int, flags: int, file_index: int | None):
+        """calc_ut, then verify the file actually read is one we verified. Other code in the
+        process can change the global ephemeris path; if it did, reset it and recompute."""
+        used = ""
+        for attempt in range(2):
+            xx, ret = swe.calc_ut(jd_ut, code, flags)
+            fell_back = not ret & swe.FLG_SWIEPH
+            if file_index is None:
+                if not fell_back:
+                    return xx
+            else:
+                used = swe.get_current_file_data(file_index)[0]
+                if not fell_back and used and str(Path(used).resolve().parent) == self._path:
+                    return xx
+            if attempt == 0:  # the global path may have been changed elsewhere: reset, retry
+                swe.set_ephe_path(self._path)
+                _CURRENT_PATH[0] = self._path
+        self._check(ret, jd_ut)  # a fallback after the reset: genuinely out of range
+        raise CalcError(Reason.EPHEMERIS_UNAVAILABLE, f"ephemeris file in use is {used!r}")
 
     @staticmethod
     def _flags(profile: CalcProfile) -> int:
@@ -94,15 +118,15 @@ class SwissEphemeris:
             self._prepare(profile, jd_ut)
             if body in ("rahu", "ketu"):
                 node = swe.MEAN_NODE if profile.nodes.model == "mean" else swe.TRUE_NODE
-                xx, ret = swe.calc_ut(jd_ut, node, self._flags(profile))
-                # node positions are analytic; the flag still reports the ephemeris used
-                self._check(ret, jd_ut)
+                # the mean node is analytic; the true node reads the Moon file
+                xx = self._calc(jd_ut, node, self._flags(profile),
+                                None if node == swe.MEAN_NODE else 1)
                 lon, lat, speed = xx[0], xx[1], xx[3]
                 if body == "ketu":
                     lon, lat = lon + 180.0, -lat
                 return BodyState(norm360(lon), lat, speed)
-            xx, ret = swe.calc_ut(jd_ut, _PLANETS[body], self._flags(profile))
-            self._check(ret, jd_ut)
+            xx = self._calc(jd_ut, _PLANETS[body], self._flags(profile),
+                            1 if body == "moon" else 0)
             return BodyState(norm360(xx[0]), xx[1], xx[3])
 
     def ayanamsa(self, jd_ut: float, profile: CalcProfile) -> float:

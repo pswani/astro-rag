@@ -57,7 +57,8 @@ class TransitEvents:
             for kind in ("sign", "nakshatra", "pada"):
                 if kind not in kinds:
                     continue
-                for c in crossings(lon, t0, t1, step=step, speed=speed, width=_WIDTH[kind]):
+                for c in crossings(lon, t0, t1, step=step, width=_WIDTH[kind],
+                                   stations=stations):
                     target = ref.rashi_id(c.index) if kind == "sign" else ref.nakshatra_id(
                         c.index // 4 if kind == "pada" else c.index)
                     detail = {"ingress": kind}
@@ -74,7 +75,7 @@ class TransitEvents:
                                               {"turns": motion}))
             if targets:
                 tl = [lon_ for _, lon_ in targets]
-                found = crossings(lon, t0, t1, step=step, speed=speed, targets=tl)
+                found = crossings(lon, t0, t1, step=step, targets=tl, stations=stations)
                 for c in found:
                     natal_subj = targets[c.index][0]
                     kind = "return" if natal_subj == subj else "conjunction"
@@ -93,6 +94,10 @@ class TransitEvents:
                direction: int | None, detail: dict[str, Any]) -> TransitEvent:
         when = utc_from_jd(jd)
         motion = None if direction is None else ("direct" if direction > 0 else "retrograde")
-        return TransitEvent(id=f"{ctx.chart_id}/event/{body}/{kind}/{target}/{when.isoformat()}",
+        tag = kind
+        if "ingress" in detail:  # a nakshatra and a pada ingress can share an instant
+            tag = f"{kind}.{detail['ingress']}" + (f".{detail['pada']}" if "pada" in detail
+                                                   else "")
+        return TransitEvent(id=f"{ctx.chart_id}/event/{body}/{tag}/{target}/{when.isoformat()}",
                             kind=kind, body=body, target=target, start_utc=when, motion=motion,
                             detail=detail, profile_id=ctx.profile.id)

@@ -61,8 +61,9 @@ class TransitStates:
         moon_sign = ctx.refdata.rashi_index(moon.value)
         events: list[TransitEvent] = []
 
-        sat = [(a, b, houses_apart(moon_sign, s)) for a, b, s in sign_segments(ctx, "saturn",
-                                                                                t0, t1)]
+        sat = [(a, b, houses_apart(moon_sign, s))
+               for a, b, s in sign_segments(ctx, "saturn", t0, t1)]
+
         def emit(state: str, body: str, pieces, detail_fn) -> None:
             for a, b, v in merge(pieces):
                 if v is None:

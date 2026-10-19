@@ -48,3 +48,29 @@ def assess(lon: Fn, t: float, u_days: float, *, width: float, step: float,
     after = [(c.jd - t) / MINUTE for c in cs if c.jd > t]
     return Assessment("sensitive", (min(before) if before else None,
                                     min(after) if after else None))
+
+
+def assess_many(lon: Fn, t: float, u_days: float, *, base_width: float,
+                multiples: dict[str, int], step: float, speed: Fn | None = None
+                ) -> dict[str, Assessment]:
+    """One crossing search for several nested boundary sets.
+
+    Boundaries of `name` are every `multiples[name]`-th boundary of width `base_width`; e.g. with
+    the pada span as base, nakshatra = 4 and sign = 9.
+    """
+    if u_days <= 0:
+        return {name: STABLE for name in multiples}
+    cs = crossings(lon, t - u_days, t + u_days, step=min(step, u_days), speed=speed,
+                   width=base_width)
+    count = round(360.0 / base_width)
+    out = {}
+    for name, m in multiples.items():
+        hits = [c for c in cs if round(c.boundary / base_width) % count % m == 0]
+        if not hits:
+            out[name] = STABLE
+            continue
+        before = [(t - c.jd) / MINUTE for c in hits if c.jd <= t]
+        after = [(c.jd - t) / MINUTE for c in hits if c.jd > t]
+        out[name] = Assessment("sensitive", (min(before) if before else None,
+                                             min(after) if after else None))
+    return out

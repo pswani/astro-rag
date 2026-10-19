@@ -18,7 +18,7 @@ from typing import Literal
 from zoneinfo import ZoneInfo
 
 import tzdata
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from astro.calc.context import NormalizedBirth
 from astro.calc.core.canonical import canonical_json
@@ -48,6 +48,14 @@ class BirthInput(BaseModel):
     timezone: str | None = None
     utc_offset_minutes: int | None = Field(default=None, ge=-16 * 60, le=16 * 60)
     time_standard_note: str | None = None
+
+    @field_validator("local_time")
+    @classmethod
+    def _naive_clock_time(cls, v: time | None) -> time | None:
+        if v is not None and v.tzinfo is not None:
+            raise ValueError("local_time is a clock reading without an offset; give the zone "
+                             "in `timezone` or a documented offset in `utc_offset_minutes`")
+        return v
 
 
 class Normalization(BaseModel):

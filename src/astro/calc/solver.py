@@ -65,9 +65,10 @@ def find_stations(speed: Fn, t0: float, t1: float, step: float) -> list[float]:
 
 
 def _sample(lon: Fn, t0: float, t1: float, step: float,
-            stations: Sequence[float]) -> tuple[list[float], list[float]]:
+            stations: Sequence[float]) -> tuple[list[float], list[float], list[float]]:
     pts = sorted({*grid(t0, t1, step), *(s for s in stations if t0 < s < t1)})
-    return pts, unwrap([lon(t) for t in pts])
+    raw = [lon(t) for t in pts]
+    return pts, raw, unwrap(raw)
 
 
 def _local_unwrapped(lon: Fn, ref_t_value: float, ref_wrapped: float) -> Fn:
@@ -76,13 +77,18 @@ def _local_unwrapped(lon: Fn, ref_t_value: float, ref_wrapped: float) -> Fn:
 
 def crossings(lon: Fn, t0: float, t1: float, *, step: float, speed: Fn | None = None,
               width: float | None = None, offset: float = 0.0,
-              targets: Sequence[float] = ()) -> list[Crossing]:
-    """All crossings in (t0, t1] of the boundaries `offset + k·width` and/or `targets`."""
-    stations = find_stations(speed, t0, t1, step) if speed else []
-    pts, vals = _sample(lon, t0, t1, step, stations)
+              targets: Sequence[float] = (),
+              stations: Sequence[float] | None = None) -> list[Crossing]:
+    """All crossings in (t0, t1] of the boundaries `offset + k·width` and/or `targets`.
+
+    Pass `stations` when they are already known for [t0, t1]; otherwise they are found from
+    `speed` (no `speed` means the motion is monotone)."""
+    if stations is None:
+        stations = find_stations(speed, t0, t1, step) if speed else []
+    pts, raw, vals = _sample(lon, t0, t1, step, stations)
     count = round(360.0 / width) if width else 0
     out: list[Crossing] = []
-    for a, b, ua, ub in zip(pts, pts[1:], vals, vals[1:], strict=False):
+    for a, b, ra, ua, ub in zip(pts, pts[1:], raw, vals, vals[1:], strict=False):
         if ua == ub:
             continue
         direction = 1 if ub > ua else -1
@@ -97,7 +103,7 @@ def crossings(lon: Fn, t0: float, t1: float, *, step: float, speed: Fn | None = 
             base = tgt + 360.0 * math.floor((lo - tgt) / 360.0)
             for j in range(-1, 3):
                 candidates.append((base + 360.0 * j, -(i + 1)))
-        f_local = _local_unwrapped(lon, ua, lon(a))
+        f_local = _local_unwrapped(lon, ua, ra)
         for b_val, tag in candidates:
             hit = (ua < b_val <= ub) if direction > 0 else (ub < b_val <= ua)
             if not hit:

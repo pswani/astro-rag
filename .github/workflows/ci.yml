@@ -15,3 +15,5 @@ jobs:
       - run: ruff check src tests scripts
       - run: lint-imports
       - run: pytest
+        env:
+          ASTRO_REQUIRE_ORACLE: "1"

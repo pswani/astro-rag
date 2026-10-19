@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import os
 
 import pytest
 
@@ -22,6 +23,8 @@ from astro.calc.registry import default_engine
 
 from .helpers import ephemeris, profile, refdata
 
+if os.environ.get("ASTRO_REQUIRE_ORACLE"):  # CI: a broken oracle install must fail, not skip
+    import jhora.panchanga.drik  # noqa: F401
 with contextlib.redirect_stdout(io.StringIO()):
     drik = pytest.importorskip("jhora.panchanga.drik")
     from jhora import const, utils

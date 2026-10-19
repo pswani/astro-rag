@@ -10,6 +10,8 @@ import math
 from datetime import UTC, datetime, timedelta
 from typing import Literal
 
+from astro.calc.core.status import CalcError, Reason
+
 Calendar = Literal["gregorian", "julian"]
 
 _J2000 = 2451545.0
@@ -73,6 +75,17 @@ def utc_from_jd(jd: float) -> datetime:
 def weekday_index(jd_local_civil: float) -> int:
     """0 = Sunday … 6 = Saturday for a JD expressed on a local civil time scale."""
     return int((math.floor(jd_local_civil + 0.5) + 1) % 7)
+
+
+def parse_utc_instant(value: str) -> float:
+    """JD (UT) for an ISO 8601 instant that carries a UTC offset."""
+    try:
+        dt = datetime.fromisoformat(value)
+    except (TypeError, ValueError) as e:
+        raise CalcError(Reason.MISSING_INPUT, f"not an ISO 8601 instant: {value!r}") from e
+    if dt.tzinfo is None:
+        raise CalcError(Reason.MISSING_INPUT, f"instant {value!r} needs a UTC offset")
+    return jd_from_utc(dt)
 
 
 MINUTE = 1.0 / 1440.0

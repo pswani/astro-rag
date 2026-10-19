@@ -102,8 +102,10 @@ class Engine:
             "method_inputs": ctx.method_inputs,
         })
 
-    def _graph(self, requests: Iterable[FeatureRequest]) -> dict[FeatureRequest, set]:
+    def _graph(self, requests: Iterable[FeatureRequest]
+               ) -> tuple[dict[FeatureRequest, set], dict[FeatureRequest, FeatureResult]]:
         graph: dict[FeatureRequest, set[FeatureRequest]] = {}
+        failed: dict[FeatureRequest, FeatureResult] = {}
         todo = list(requests)
         while todo:
             r = todo.pop()
@@ -113,24 +115,35 @@ class Engine:
             if feat is None:
                 graph[r] = set()
                 continue
-            deps = set(feat.requires(r.param_dict))
+            try:
+                deps = set(feat.requires(r.param_dict))
+            except Exception as e:  # noqa: BLE001 - feature-local, like compute()
+                failed[r] = _status(r, Status.FAILED, Reason.TOOL_ERROR,
+                                    f"requires: {type(e).__name__}: {e}")
+                deps = set()
             graph[r] = deps
             todo.extend(deps)
-        return graph
+        return graph, failed
 
     def run(self, ctx: ChartContext,
             requests: Iterable[FeatureRequest]) -> dict[FeatureRequest, FeatureResult]:
         requests = list(requests)
-        graph = self._graph(requests)
-        try:
-            order = list(TopologicalSorter(graph).static_order())
-        except CycleError as e:
-            cyc = {r: _status(r, Status.FAILED, Reason.DEPENDENCY_CYCLE, str(e.args[1]))
-                   for r in requests}
-            return cyc
+        graph, failed = self._graph(requests)
+        # Break each cycle by failing its members only; their dependents then become
+        # `dependency_unavailable` and unrelated features are unaffected.
+        while True:
+            try:
+                order = list(TopologicalSorter(graph).static_order())
+                break
+            except CycleError as e:
+                cycle = e.args[1]
+                for r in cycle:
+                    failed[r] = _status(r, Status.FAILED, Reason.DEPENDENCY_CYCLE,
+                                        " -> ".join(c.feature_id for c in cycle))
+                    graph[r] = set()
         results: dict[FeatureRequest, FeatureResult] = {}
         for req in order:
-            results[req] = self._run_one(ctx, req, graph[req], results)
+            results[req] = failed.get(req) or self._run_one(ctx, req, graph[req], results)
         return {r: results[r] for r in requests}
 
     def _run_one(self, ctx: ChartContext, req: FeatureRequest, deps: set[FeatureRequest],
@@ -143,8 +156,11 @@ class Engine:
         if bad:
             names = ", ".join(sorted(f"{d.feature_id}={done[d].status}" for d in bad))
             return _status(req, Status.UNKNOWN, Reason.DEPENDENCY_UNAVAILABLE, names)
-        key = self.cache_key(ctx, req)
-        if self.cache is not None and (hit := self.cache.get(key)) is not None:
+        try:
+            key = self.cache_key(ctx, req) if self.cache is not None else None
+        except (TypeError, ValueError) as e:
+            return _status(req, Status.FAILED, Reason.TOOL_ERROR, f"cache key: {e}")
+        if key is not None and (hit := self.cache.get(key)) is not None:
             return hit
         try:
             result = feat.compute(ctx, Deps({d: done[d] for d in deps}), req.param_dict)
@@ -161,7 +177,7 @@ class Engine:
                            "ephemeris": ctx.ephemeris.info().files_sha256,
                            "refdata": ctx.refdata.version},
         })
-        if self.cache is not None and result.status is Status.OK:
+        if key is not None and result.status is Status.OK:
             self.cache.put(key, result)
         return result
 

@@ -14,7 +14,13 @@ from astro.calc.core.angles import deg_in_sign, nakshatra_index, pada, sign_inde
 from astro.calc.core.status import Status
 from astro.calc.engine import Deps, FeatureRequest
 from astro.calc.ephemeris.port import BODIES
-from astro.calc.features.common import LAGNA, WIDTHS, assess_station, assess_width, subject
+from astro.calc.features.common import (
+    LAGNA,
+    assess_station,
+    assess_zodiac,
+    is_retrograde,
+    subject,
+)
 from astro.calc.model import ChartFact, FeatureResult
 from astro.calc.sensitivity import STABLE, Assessment
 
@@ -33,14 +39,11 @@ class Positions:
         facts: list[ChartFact] = []
         for body in BODIES:
             st = ctx.ephemeris.body(body, t, ctx.profile)
-            sign_a = assess_width(ctx, body, WIDTHS["sign"])
-            nak_a = assess_width(ctx, body, WIDTHS["nakshatra"])
-            pada_a = assess_width(ctx, body, WIDTHS["pada"])
-            if body in ("rahu", "ketu") and ctx.profile.nodes.retrograde == "always":
-                retro, retro_a = True, STABLE
-            else:
-                retro = st.speed < 0
-                retro_a = assess_station(ctx, body)
+            z = assess_zodiac(ctx, body)
+            sign_a, nak_a, pada_a = z["sign"], z["nakshatra"], z["pada"]
+            retro = is_retrograde(ctx, body, st.speed)
+            retro_a = STABLE if body in ("rahu", "ketu") and \
+                ctx.profile.nodes.retrograde == "always" else assess_station(ctx, body)
             facts += self._body_facts(ctx, subject(body), st.longitude, pada_a, sign_a, nak_a)
             facts.append(ctx.fact("latitude", subject(body), st.latitude, unit="deg",
                                   sensitivity=pada_a.sensitivity, margins=pada_a.margins))
@@ -51,9 +54,8 @@ class Positions:
         if ctx.birth.time_known:
             b = ctx.birth
             asc = ctx.ephemeris.ascendant(t, b.latitude, b.longitude, ctx.profile)
-            facts += self._body_facts(ctx, LAGNA, asc, assess_width(ctx, LAGNA, WIDTHS["pada"]),
-                                      assess_width(ctx, LAGNA, WIDTHS["sign"]),
-                                      assess_width(ctx, LAGNA, WIDTHS["nakshatra"]))
+            z = assess_zodiac(ctx, LAGNA)
+            facts += self._body_facts(ctx, LAGNA, asc, z["pada"], z["sign"], z["nakshatra"])
         else:
             facts += [ctx.unknown(k, LAGNA) for k in
                       ("longitude", "sign", "degree_in_sign", "nakshatra", "pada",

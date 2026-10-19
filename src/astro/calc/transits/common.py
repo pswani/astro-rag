@@ -2,20 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
 from astro.calc.core.status import CalcError, Reason
-from astro.calc.core.timescale import jd_from_utc
+from astro.calc.core.timescale import parse_utc_instant as parse_instant
+
+__all__ = ["check_window", "parse_instant", "window"]
 
 SLOW_WINDOW_DAYS = 5 * 365.25   # design §7.8 window limits
 MOON_WINDOW_DAYS = 1 * 365.25
-
-
-def parse_instant(value: str) -> float:
-    dt = datetime.fromisoformat(value)
-    if dt.tzinfo is None:
-        raise CalcError(Reason.MISSING_INPUT, f"instant {value!r} needs a UTC offset")
-    return jd_from_utc(dt)
 
 
 def window(params: dict) -> tuple[float, float]:

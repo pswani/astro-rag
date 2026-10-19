@@ -18,7 +18,7 @@ from typing import Any
 from astro.calc.context import ChartContext
 from astro.calc.core.angles import NAKSHATRA_SPAN, nakshatra_fraction, nakshatra_index
 from astro.calc.core.status import CalcError, Reason, Status
-from astro.calc.core.timescale import jd_from_utc, utc_from_jd
+from astro.calc.core.timescale import parse_utc_instant, utc_from_jd
 from astro.calc.engine import Deps, FeatureRequest
 from astro.calc.model import DashaPeriod, FeatureResult
 from astro.calc.sensitivity import assess
@@ -137,7 +137,10 @@ class Vimshottari:
     def compute(self, ctx: ChartContext, deps: Deps, params: dict[str, Any]) -> FeatureResult:
         prof = ctx.profile
         levels = prof.dasha.levels
-        depth = int(params.get("depth", len(levels)))
+        try:
+            depth = int(params.get("depth", len(levels)))
+        except (TypeError, ValueError) as e:
+            raise CalcError(Reason.UNSUPPORTED_FEATURE, f"depth {params['depth']!r}") from e
         if not 1 <= depth <= len(levels):  # SD only when the profile lists it
             raise CalcError(Reason.UNSUPPORTED_FEATURE,
                             f"depth {depth} outside the profile levels {levels}")
@@ -177,18 +180,28 @@ class DashaActive:
     id = "dasha_active"
 
     def requires(self, params: dict[str, Any]) -> list[FeatureRequest]:
-        return [FeatureRequest.of("vimshottari", depth=int(params.get("depth", 3)))]
+        # no depth: the tree uses the profile's levels and is shared with plain requests
+        if "depth" in params:
+            return [FeatureRequest.of("vimshottari", depth=params["depth"])]
+        return [FeatureRequest.of("vimshottari")]
 
     def compute(self, ctx: ChartContext, deps: Deps, params: dict[str, Any]) -> FeatureResult:
         tree = deps.get_one("vimshottari")
-        at = utc_from_jd(jd_from_utc(datetime.fromisoformat(params["as_of"])))
+        if "as_of" not in params:
+            raise CalcError(Reason.MISSING_INPUT, "dasha_active needs as_of")
+        at = utc_from_jd(parse_utc_instant(params["as_of"]))
         chain = active_chain(tree.periods, at)
         if not chain:
             raise CalcError(Reason.OUT_OF_RANGE, "as-of date outside the computed dasha span")
+        levels_in_tree = {p.level for p in tree.periods}
         flags = sandhi(tree.periods, at, ctx.profile.dasha.sandhi_margin_days)
         facts = []
         for level, hit in flags.items():
-            f = ctx.fact("dasha_sandhi", f"dasha:{SYSTEM}:{level}", hit is not None)
+            subj = f"dasha:{SYSTEM}:{level}"
+            if level not in levels_in_tree:  # not computed: unknown, never a silent False
+                facts.append(ctx.unknown("dasha_sandhi", subj))
+                continue
+            f = ctx.fact("dasha_sandhi", subj, hit is not None)
             if hit is not None:
                 f = f.model_copy(update={"provenance": {"boundary_utc": hit[0].isoformat(),
                                                         "distance_days": hit[1]}})

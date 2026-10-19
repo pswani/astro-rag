@@ -6,9 +6,10 @@ from typing import Any
 
 from astro.calc.context import ChartContext
 from astro.calc.core.angles import houses_apart, nakshatra_index, sign_index, signed_diff
-from astro.calc.core.status import Status
+from astro.calc.core.status import CalcError, Reason, Status
 from astro.calc.engine import Deps, FeatureRequest
 from astro.calc.ephemeris.port import BODIES
+from astro.calc.features.common import is_retrograde
 from astro.calc.model import ChartFact, FeatureResult
 from astro.calc.transits.common import parse_instant
 
@@ -23,6 +24,8 @@ class TransitPositions:
 
     def compute(self, ctx: ChartContext, deps: Deps, params: dict[str, Any]) -> FeatureResult:
         natal = deps.get_one("positions")
+        if "as_of" not in params:
+            raise CalcError(Reason.MISSING_INPUT, "transit positions need as_of")
         t = parse_instant(params["as_of"])
         ref = ctx.refdata
         facts: list[ChartFact] = []
@@ -36,7 +39,7 @@ class TransitPositions:
                 ctx.fact("longitude", subj, st.longitude, frame="transit", unit="deg"),
                 ctx.fact("sign", subj, ref.rashi_id(s), frame="transit"),
                 ctx.fact("nakshatra", subj, ref.nakshatra_id(n), frame="transit"),
-                ctx.fact("retrograde", subj, st.speed < 0, frame="transit"),
+                ctx.fact("retrograde", subj, is_retrograde(ctx, body, st.speed), frame="transit"),
             ]
             for frame, natal_subj in NATAL_REFERENCES:
                 nf = natal.fact("sign", natal_subj)
