@@ -75,7 +75,7 @@ class SwissEphemeris:
     @staticmethod
     def _flags(profile: CalcProfile) -> int:
         fl = swe.FLG_SWIEPH | swe.FLG_SPEED | swe.FLG_SIDEREAL
-        if not profile.position.apparent:  # pragma: no cover - only apparent is allowed today
+        if not profile.position.apparent:  # geometric: no light-time or aberration (G-C12)
             fl |= swe.FLG_TRUEPOS
         return fl
 

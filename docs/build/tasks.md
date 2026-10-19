@@ -44,21 +44,21 @@ Undecided conventions (calc-review §5, decisions 2–4) are implemented as **pr
 
 ## B4 Normalization prerequisites (§5.1)
 
-- [ ] B4.1 Birth input model: date + calendar, local time, precision, uncertainty defaults (INP-3, design §6.3)
-- [ ] B4.2 Time-zone resolution: IANA zone or explicit offset; gap → `invalid_local_time`, fold → both candidates (INP-2, §6.2.3)
-- [ ] B4.3 Coordinates → IANA zone via `timezonefinder` when no zone is supplied
-- [ ] B4.4 Normalized input → chart ID via HMAC with an injected key (§5.3)
+- [x] B4.1 Birth input model: date + calendar, local time, precision, uncertainty defaults (INP-3, design §6.3)
+- [x] B4.2 Time-zone resolution: IANA zone or explicit offset; gap → `invalid_local_time`, fold → both candidates (INP-2, §6.2.3)
+- [x] B4.3 Coordinates → IANA zone via `timezonefinder` when no zone is supplied
+- [x] B4.4 Normalized input → chart ID via HMAC with an injected key (§5.3)
 - [!] B4.5 GeoNames gazetteer import and place ranking — needs the GeoNames dump provisioned; deferred
 
 ## B5 Phase-1 features
 
-- [ ] B5.1 Positions: sidereal longitude, latitude, speed, retrograde for Sun…Saturn, Rahu, Ketu (derived) and Lagna; sign, degree, nakshatra, pada, nakshatra lord (CALC-1, CALC-2 subset; G-C3, G-C4 as options)
-- [ ] B5.2 Houses: whole-sign and Sripati placement; frames Lagna / Chandra / Surya / any graha (CALC-4)
-- [ ] B5.3 Lordships, occupants, parivartana, dispositor chains with terminal kind (REL-1 subset)
-- [ ] B5.4 Friendship: natural (ontology), temporal, compound panchadha (REL-2 subset)
-- [ ] B5.5 Varga engine (data-driven spec) + D1/D9/D10; vargottama (VAR-1)
-- [ ] B5.6 Panchanga: tithi + paksha, nakshatra, nitya yoga, karana with start/end; vara by sunrise; `no_sunrise` (PAN-1, PAN-2)
-- [ ] B5.7 Vimshottari: birth balance, MD/AD/PD tree (SD optional), `active_chain`, `periods_in`, sandhi flags (DAS-1, DAS-2, DAS-4)
+- [x] B5.1 Positions: sidereal longitude, latitude, speed, retrograde for Sun…Saturn, Rahu, Ketu (derived) and Lagna; sign, degree, nakshatra, pada, nakshatra lord (CALC-1, CALC-2 subset; G-C3, G-C4 as options)
+- [x] B5.2 Houses: whole-sign and Sripati placement; frames Lagna / Chandra / Surya / any graha (CALC-4)
+- [x] B5.3 Lordships, occupants, parivartana, dispositor chains with terminal kind (REL-1 subset)
+- [x] B5.4 Friendship: natural (ontology), temporal, compound panchadha (REL-2 subset)
+- [x] B5.5 Varga engine (data-driven spec) + D1/D9/D10; vargottama (VAR-1)
+- [x] B5.6 Panchanga: tithi + paksha, nakshatra, nitya yoga, karana with start/end; vara by sunrise; `no_sunrise` (PAN-1, PAN-2)
+- [x] B5.7 Vimshottari: birth balance, MD/AD/PD tree (SD optional), `active_chain`, `periods_in`, sandhi flags (DAS-1, DAS-2, DAS-4)
 - [!] B5.8 Condition: dignity, combustion, graha yuddha, gandanta, sandhi — waits for decision 3 (G-C5…G-C7)
 - [!] B5.9 Aspects and conjunctions — waits for decision 4 (G-R1)
 
@@ -74,7 +74,7 @@ Undecided conventions (calc-review §5, decisions 2–4) are implemented as **pr
 ## B7 Verification
 
 - [ ] B7.1 Property tests (Hypothesis): index ranges, dasha tiling, `active_chain` uniqueness, `periods_in` = brute force, varga closed forms, loop crossings (calc-review §4.3)
-- [ ] B7.2 Oracle tests against PyJHora (test-only, AGPL): positions, Lagna, panchanga, D9/D10, Vimshottari
+- [x] B7.2 Oracle tests against PyJHora (test-only, AGPL): positions, Lagna, panchanga, D9/D10, Vimshottari — 8 charts, 48 checks; AD starts agree to < 1 min under matched conventions
 - [ ] B7.3 Determinism: byte-identical re-run of a full feature run (CALC-9)
 - [ ] B7.4 Review pass over the whole layer; fix findings
 
@@ -83,4 +83,5 @@ Undecided conventions (calc-review §5, decisions 2–4) are implemented as **pr
 | Date | Change |
 |---|---|
 | 2026-10-19 | List created |
+| 2026-10-19 | B4, B5.1–B5.7, B7.2 done. Oracle findings: PyJHora defaults to true geometric positions (Sun ~20″ from apparent), the true node and a per-chart *true* sidereal year; `drik.dhasavarga` uses cyclic (parivritti) D10, so `charts.divisional_chart(chart_method=1)` is the Parashari oracle. Recorded as G-C12 and G-D4 in calc-review |
 | 2026-10-19 | B0–B3 done. Findings fixed during the loop: exact boundary indexing (Hypothesis found 30° → wrong pada via `floor(λ / (10/3))`); contact detection uses adjacent monotone pieces instead of a 1-day window; Swiss Ephemeris coverage start corrected to JD 2378497.0 (2378496.5 already falls back to Moshier); nutation does not change sidereal positions (G-C4 downgraded) |

@@ -84,11 +84,13 @@ The first two are mostly decisions for the reviewer, recorded as profile fields.
 | G-C1 | The profile pins `sepl_18`/`semo_18`, which cover 1800–2400. Requirements rev 3 removed the year range, and the INP-1 acceptance requires pre-1900 and post-2100 fixtures. | **Blocking** for INP-1 acceptance | Install the full Swiss Ephemeris file set for the range wanted. Add `ephemeris.coverage: {start_jd, end_jd}` to the profile. The capability check reads it and returns `out_of_range`. Never fall back to Moshier (already decided). |
 | G-C2 | ΔT uncertainty grows from seconds to hours for ancient and far-future dates. That moves the Lagna exactly like birth-time uncertainty, but §7.9 ignores it. | Minor | Add a ΔT uncertainty estimate (published σ(ΔT) model) to the CALC-7 interval. Record it in provenance. |
 | G-C3 | Rahu/Ketu semantics are undefined: Ketu = Rahu + 180°; the mean node is always retrograde; the true node is sometimes direct. Retrograde affects rules and the BNN variant. | **Blocking** for positions | Profile field `nodes.retrograde: always \| by_speed`. Ketu is derived, never computed separately. |
-| G-C4 | Ayanamsa "true" (with nutation) vs "mean" is not declared. Nutation in longitude reaches about 17″, beyond the 10″ tolerance against JHora. | **Blocking** for NFR-1 fixtures | Profile field `ayanamsa.nutation: true \| false`, matched to the JHora export settings. |
+| G-C4 | Ayanamsa "true" (with nutation) vs "mean" is not declared. | Minor (downgraded after a probe) | Swiss Ephemeris subtracts a matching ayanamsa, so sidereal longitudes are identical with or without `FLG_NONUT`. Only the *reported* ayanamsa value differs. Profile field `ayanamsa.nutation` controls the reported value. |
 | G-C5 | Dignity is ambiguous in three ways: (a) precedence where exaltation, moolatrikona and own sign overlap (Moon in Taurus, Mercury in Virgo); (b) whether friend/enemy dignity uses natural or compound friendship; (c) dignity in vargas. | **Blocking** for CALC-2 | Profile field `dignity: {precedence: [exalted, moolatrikona, own, …], friendship_basis: natural \| compound}`. Degree ranges stay in the ontology with sources. |
 | G-C6 | Graha yuddha: the orb is given, but not the winner rule (latitude, longitude or brightness, which differ by source). | **Blocking** for CALC-2 | Profile field `graha_yuddha.winner: north_latitude \| …`. |
 | G-C7 | Gandanta and sandhi have no thresholds. Gandanta can mean the last pada, the last 3°20′ or a fixed arc. Rashi sandhi can be ±1°, ±0°48′ and so on. | **Blocking** for CALC-2 | Profile fields `gandanta.arc_deg` and `sandhi.arc_deg`, with source. |
 | G-C8 | Combustion: the angle measured (longitude difference or true angular distance) is not stated. | Minor | Profile field `combustion.measure: longitude`. |
+| G-C12 | *Found while building:* apparent (light-time + aberration) vs true geometric positions is not declared. The Sun differs by about 20.5″, beyond the 10″ tolerance. PyJHora uses true positions (`FLG_TRUEPOS`). | **Blocking** for NFR-1 fixtures | Profile field `position.apparent` (both supported, provisional). Must match the Jagannatha Hora export settings. |
+| G-C13 | *Found while building:* mean vs true node changes Rahu/Ketu by up to about 1.5°. Already a profile field, but PyJHora defaults to the true node while `parashari_v1` uses the mean node. | **Blocking** for NFR-1 fixtures | Reviewer confirms `nodes.model` against the reference exports. |
 
 **Profiles (CALC-3)**
 
@@ -139,6 +141,7 @@ The first two are mostly decisions for the reviewer, recorded as profile fields.
 | G-D1 | DAS-3 says "separate specifications" but defines no interface. Without one, every new system touches core code (NFR-9). | Minor now, **Blocking** for phase 7 | A `DashaSystem` protocol (§3.2). |
 | G-D2 | The sandhi margin is "profile-defined" but has no field or value. | Minor | Profile field `dasha.sandhi_margin: {MD: days, AD: days}`. |
 | G-D3 | The DAS-5 period-lord context has no schema. | Minor | A `PeriodLordContext` model holding fact IDs, not copied values. |
+| G-D4 | *Found while building:* the dasha year length is a convention. The design says 365.2425; Jagannatha Hora and PyJHora default to the *true* sidereal year, measured per chart from the solar return. Boundaries then drift by up to about 14 h over 120 years. | Minor (within the 2-day tolerance) | `dasha.year_days` is provisional. With the mean sidereal year (365.256364) our AD starts match PyJHora to under a minute. A true-sidereal-year option can be added as a profile variant if the reviewer chooses it. |
 
 **Transits (TRN)**
 
@@ -308,7 +311,7 @@ These need no expert data and catch most indexing errors:
 | # | Decision | Owner | Blocks |
 |---|---|---|---|
 | 1 | Ephemeris file set and coverage range (G-C1) | Operator | INP-1 acceptance, phase 1 |
-| 2 | Node retrograde semantics, ayanamsa nutation (G-C3, G-C4) | Reviewer, matched to JHora settings | Positions, NFR-1 fixtures |
+| 2 | Node model and retrograde semantics; apparent vs true positions; dasha year length (G-C3, G-C12, G-C13, G-D4) | Reviewer, matched to JHora settings | NFR-1 fixtures (the code supports every option) |
 | 3 | Dignity precedence and friendship basis; yuddha winner; gandanta and sandhi arcs (G-C5…G-C7) | Reviewer | CALC-2 |
 | 4 | Aspect system, node aspects, conjunction definition (G-R1) | Reviewer | REL-1 |
 | 5 | Varga spec format (G-V1) | Design | Varga engine |

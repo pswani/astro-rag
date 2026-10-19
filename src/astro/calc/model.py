@@ -39,6 +39,8 @@ FACT_KINDS: dict[str, type | tuple[type, ...]] = {
     "native_karaka": str,        # graha:* signifying the native under a scheme
     "transit_house": int,        # house of a transiting body from a natal reference
     "transit_distance": float,   # signed degrees transit − natal point
+    "dasha_balance": float,      # years of the first MD remaining at birth
+    "dasha_sandhi": bool,        # as-of instant within the profile margin of a boundary
 }
 
 

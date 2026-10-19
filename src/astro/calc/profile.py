@@ -32,6 +32,8 @@ class Nodes(_Strict):
 
 class Position(_Strict):
     origin: Literal["geocentric"] = "geocentric"
+    # apparent (light-time + aberration, ~20″ for the Sun) or true geometric positions; the
+    # difference exceeds the NFR-1 tolerance, so it must match the reference (calc-review G-C12)
     apparent: bool = True
 
 

@@ -35,5 +35,7 @@ time: {tzdata: "2026e", delta_t: swisseph_default}
 provisional:
   - ayanamsa.nutation
   - nodes.retrograde
+  - position.apparent
+  - dasha.year_days
   - dasha.sandhi_margin_days
   - eclipse.orb_deg

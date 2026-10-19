@@ -32,6 +32,7 @@ class ReferenceData(Protocol):
     version: str
 
     def rashi_id(self, sign: int) -> str: ...
+    def rashi_index(self, rashi: str) -> int: ...
     def sign_lord(self, sign: int) -> str: ...
     def own_signs(self, graha: str) -> tuple[int, ...]: ...
     def nakshatra_id(self, index: int) -> str: ...
@@ -139,6 +140,9 @@ class YamlReferenceData:
     # -- lookups -----------------------------------------------------------------------------
     def rashi_id(self, sign: int) -> str:
         return "rashi:" + self._rashis[sign % 12]["id"]
+
+    def rashi_index(self, rashi: str) -> int:
+        return self._rashi_index[_strip(rashi, "rashi")]
 
     def sign_lord(self, sign: int) -> str:
         return "graha:" + self._rashis[sign % 12]["lord"]
