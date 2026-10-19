@@ -1,4 +1,4 @@
-"""Regression tests for the D11 review findings (round 4): value-based end points, canonical
+"""Regression tests for the D11 review findings of round 5: value-based end points, canonical
 angle pairs, shared stations."""
 
 from astro.calc.context import ChartContext, NormalizedBirth

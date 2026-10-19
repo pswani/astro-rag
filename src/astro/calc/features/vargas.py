@@ -95,10 +95,12 @@ class Vargas:
 
     @staticmethod
     def _assess(ctx: ChartContext, body: str, pos: FeatureResult, spec: VargaSpec) -> Assessment:
-        # D1 boundaries are signs and D9 boundaries are padas: reuse the positions assessment
-        kind = {1: "sign", 9: "pada"}.get(spec.divisions) if spec.table is None else None
-        if kind is not None:
-            return assessment_of(pos.fact(kind, subject(body)))
-        times = (target_changes(ctx, body, spec.boundaries()) if spec.table is not None
-                 else width_changes(ctx, body, 30.0 / spec.divisions))
+        if spec.table is not None:
+            times = target_changes(ctx, body, spec.boundaries())
+        elif spec.divisions == 1:  # D1 changes with the sign: reuse the positions assessment
+            return assessment_of(pos.fact("sign", subject(body)))
+        elif spec.divisions == 9:  # D9 parts are padas
+            return assessment_of(pos.fact("pada", subject(body)))
+        else:
+            times = width_changes(ctx, body, 30.0 / spec.divisions)
         return assess_lon(ctx, body, times, lambda lon: varga_sign(lon, spec))

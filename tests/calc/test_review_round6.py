@@ -1,5 +1,5 @@
-"""Regression tests for the D11 review findings (round 5): changes next to t, real predicates
-at the edges, degenerate target sets."""
+"""Regression tests for the D11 review findings of round 6: changes next to t, the facts'
+own rules at the edges, degenerate target sets."""
 
 from astro.calc.context import ChartContext, NormalizedBirth
 from astro.calc.core.timescale import MINUTE, SECOND

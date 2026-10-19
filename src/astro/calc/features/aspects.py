@@ -18,7 +18,6 @@ from astro.calc.ephemeris.port import BODIES
 from astro.calc.features.common import (
     LAGNA,
     angle_changes,
-    assess_angle,
     assessment_of,
     lon_at,
     piecewise,
@@ -137,9 +136,11 @@ class Aspects:
         now_pairs = pairs(ctx.birth.jd_ut)
         for p in sorted(now_pairs, key=sorted):
             a, b = sorted(p, key=bodies.index)
-            pa = (Assessment.combine(sign_a[a], sign_a[b]) if conj.mode == "same_sign"
-                  else assess_angle(ctx, names[a], names[b], orb_targets,
-                                    lambda x: min(x, 360.0 - x) <= conj.orb_deg))
+            if conj.mode == "same_sign":
+                pa = Assessment.combine(sign_a[a], sign_a[b])
+            else:  # one source of truth: the same pair test as conjunct_with
+                pa = piecewise(ctx, angle_changes(ctx, names[a], names[b], orb_targets),
+                               lambda t, p=p: p in pairs(t))
             rels.append(Relation(
                 id=f"{ctx.chart_id}/conjunction/{a}/{b}", kind="conjunction", source=a,
                 target=b, system=conj.mode, direction="mutual",

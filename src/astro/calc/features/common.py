@@ -33,6 +33,9 @@ from astro.calc.solver import Crossing, crossings, find_stations
 
 LAGNA = "lagna"
 _PADAS = round(360.0 / PADA_SPAN)
+# kind → (boundaries in pada spans, index of a longitude)
+ZODIAC_VALUES = {"pada": (1, pada_count), "nakshatra": (4, nakshatra_index),
+                 "sign": (9, sign_index)}
 
 
 def subject(body: str) -> str:
@@ -67,7 +70,9 @@ _STATES_MAX = 50_000  # least recently used states go first; hot instants stay
 
 
 def _state(ctx: ChartContext, key: tuple, compute: Callable[[], object]):
-    states: OrderedDict = ctx.memo.setdefault("states", OrderedDict())
+    states = ctx.memo.get("states")
+    if states is None:
+        states = ctx.memo["states"] = OrderedDict()
     if key in states:
         states.move_to_end(key)
         return states[key]
@@ -149,7 +154,7 @@ def _zodiac_times(ctx: ChartContext, body: str, multiple: int) -> tuple[float, .
 
 
 def sign_changes(ctx: ChartContext, body: str) -> tuple[float, ...]:
-    return _zodiac_times(ctx, body, 9)  # a sign is 9 padas
+    return _zodiac_times(ctx, body, ZODIAC_VALUES["sign"][0])
 
 
 def width_changes(ctx: ChartContext, body: str, width: float) -> tuple[float, ...]:
@@ -166,7 +171,8 @@ def width_changes(ctx: ChartContext, body: str, width: float) -> tuple[float, ..
 def target_changes(ctx: ChartContext, body: str,
                    targets: Iterable[float]) -> tuple[float, ...]:
     """Crossings of any of `targets` (absolute longitudes)."""
-    targets = tuple(sorted({round(norm360(x), 9) % 360.0 for x in targets}))
+    # exact (unrounded) targets, so the cuts sit where the facts' rules really change
+    targets = tuple(sorted({norm360(x) for x in targets}))
 
     def compute():
         w = _window(ctx)
@@ -247,9 +253,6 @@ def _unknown_lagna(ctx: ChartContext, body: str) -> bool:
     return body == LAGNA and not ctx.birth.time_known
 
 
-ZODIAC_VALUES = {"pada": (1, pada_count), "nakshatra": (4, nakshatra_index),
-                 "sign": (9, sign_index)}
-
 
 def assess_zodiac(ctx: ChartContext, body: str) -> dict[str, Assessment]:
     """Sign, nakshatra and pada sensitivity of `body` from one crossing search."""
@@ -298,8 +301,7 @@ def piecewise(ctx: ChartContext, change_times: Iterable[float],
     # t is an edge too, so a change the root finder places a hair on the wrong side of t
     # still shows up in the piece next to t (margin ~0)
     edges = sorted({lo, hi, t, *cuts})
-    interior = [] if not cuts else [
-        (a, z, value_at((a + z) / 2)) for a, z in zip(edges, edges[1:], strict=False)]
+    interior = [(a, z, value_at((a + z) / 2)) for a, z in zip(edges, edges[1:], strict=False)]
     # both ends of the closed interval get their own zero-length piece: a change exactly at
     # t − u or t + u is decided by the value there, not by how a root was rounded
     pieces = [(lo, lo, value_at(lo)), *interior, (hi, hi, value_at(hi))]
