@@ -1,10 +1,13 @@
 """`astro` command line: natal charts from birth date, time and place.
 
     astro chart --date 1985-03-14 --time 06:42 --place "Pune, IN"
-    astro chart --date 1985-03-14 --lat 18.52 --lon 73.85 --tz Asia/Kolkata --style north
+    astro chart --date 1985-03-14 --lat 18.52 --lon 73.85 --tz Asia/Kolkata --style south
     astro chart --date 1985-03-14 --time 06:42 --place Pune --method bnn --varga-table all
     astro places Springfield
     astro ephemeris fetch
+
+`astro chart` prints the report and also writes it as a PDF (chart-<date>-<time>-<place>.pdf in
+the current directory; --pdf PATH to choose, --no-pdf to skip).
 
 Exit codes: 0 ok, 2 more input needed (ambiguous place, DST fold or gap, unknown zone…),
 3 unsupported (date outside the ephemeris, unknown calendar…), 1 other errors.
@@ -14,15 +17,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import datetime, time
+from pathlib import Path
 
 from pydantic import ValidationError
 
 from astro.calc.core.status import CalcError
 from astro.calc.core.timescale import utc_from_jd
 from astro.cli.fmt import format_offset
-from astro.normalize.gazetteer import ATTRIBUTION, Place, default_gazetteer
+from astro.normalize.gazetteer import ATTRIBUTION, Place, default_gazetteer, fold
 from astro.resources import ResourceError, astro_home, ephemeris_dir
 
 EXIT_OK, EXIT_ERROR, EXIT_NEEDS_INPUT, EXIT_UNSUPPORTED = 0, 1, 2, 3
@@ -69,6 +74,12 @@ def _uncertainty(s: str) -> float:
     return v
 
 
+def _pdf_path(s: str) -> str:
+    if not s.strip():
+        raise argparse.ArgumentTypeError("give a file or folder name")
+    return s
+
+
 def _instant(s: str) -> datetime:
     try:
         dt = datetime.fromisoformat(s)
@@ -113,10 +124,16 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--varga-table", default=None,
                    help='divisional signs to tabulate, comma-separated, or "all" '
                         "(default: the charts drawn)")
-    c.add_argument("--style", choices=["south", "north"], default="south",
-                   help="chart layout: south (fixed signs) or north (fixed houses)")
+    c.add_argument("--style", choices=["north", "south"], default="north",
+                   help="chart layout: north (the diamond, fixed houses; default) or south "
+                        "(fixed signs)")
     c.add_argument("--as-of", type=_instant, help="instant for the current dasha (default now)")
-    c.add_argument("--json", action="store_true", help="machine-readable output")
+    c.add_argument("--json", action="store_true",
+                   help="machine-readable output (no PDF unless --pdf is given)")
+    pdf = c.add_mutually_exclusive_group()
+    pdf.add_argument("--pdf", metavar="PATH", type=_pdf_path,
+                     help="where to write the PDF: a file, or a directory for the default name")
+    pdf.add_argument("--no-pdf", action="store_true", help="do not write a PDF")
 
     pl = sub.add_parser("places", help="look up a place name")
     pl.add_argument("query")
@@ -250,6 +267,46 @@ def cmd_chart(args, out, err) -> int:
         out(render(report, args.style))
         if place is not None:
             out(ATTRIBUTION)
+    if args.no_pdf or (args.json and args.pdf is None):
+        return EXIT_OK
+    return _write_pdf(report, args, err)
+
+
+def pdf_name(req) -> str:
+    """chart-1985-03-14-0642-pune.pdf: the date, the clock time and the place."""
+    when = req.local_time.strftime("%H%M") if req.local_time else "notime"
+    if req.place is not None:
+        where = "-".join(fold(req.place.name).split())
+        where = "".join(ch for ch in where if ch.isascii() and (ch.isalnum() or ch == "-"))
+    else:
+        where = (f"{abs(req.latitude):.2f}{'n' if req.latitude >= 0 else 's'}"
+                 f"{abs(req.longitude):.2f}{'e' if req.longitude >= 0 else 'w'}")
+    return f"chart-{req.year:04d}-{req.month:02d}-{req.day:02d}-{when}-{where or 'place'}.pdf"
+
+
+def _write_pdf(report, args, err) -> int:
+    """Write the PDF. Failing to write the default PDF is a warning (the report was the point);
+    failing to write one asked for with --pdf is an error."""
+    asked = args.pdf is not None
+    fail = EXIT_ERROR if asked else EXIT_OK
+    try:
+        from astro.cli.pdf import write_pdf
+    except ImportError as e:  # an install from before reportlab became a dependency
+        err(f'PDF not written: {e}. Reinstall with `pip install -e ".[geo]"` (or pass '
+            "--no-pdf)")
+        return fail
+    target = Path(args.pdf).expanduser() if asked else Path.cwd()
+    if target.is_dir() or (asked and args.pdf.endswith(("/", os.sep))):
+        target = target / pdf_name(report.request)
+    elif not target.suffix:
+        target = target.with_suffix(".pdf")
+    try:
+        path = write_pdf(report, target, args.style)
+    except OSError as e:
+        err(f"PDF not written: {e.strerror or e} ({target})"
+            + ("" if asked else "; use --pdf PATH or --no-pdf"))
+        return fail
+    err(f"PDF written to {path.resolve()}")
     return EXIT_OK
 
 

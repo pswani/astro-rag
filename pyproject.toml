@@ -15,6 +15,7 @@ dependencies = [
   "scipy>=1.11",
   "numpy>=1.26",
   "rfc8785>=0.1.4",
+  "reportlab>=4.0,<6",  # the PDF report (BSD)
   "certifi>=2024.2",  # CA roots for `astro ephemeris fetch` where Python has none
   "tzdata==2026.5",   # IANA 2026e, pinned in profiles (design §6.2)
 ]
@@ -36,6 +37,7 @@ dev = [
   "ruff>=0.5",
   "timezonefinder>=6.5",
   "reverse_geocode>=1.6",
+  "pypdf>=4",  # reads the generated PDFs back in tests
 ]
 # test-only oracle, never a runtime dependency (design D6); PyJHora imports these without
 # declaring them, and a missing one would make the oracle suite skip silently
