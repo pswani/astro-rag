@@ -15,7 +15,7 @@ from astro.calc.core.status import Status
 from astro.calc.engine import Deps, FeatureRequest
 from astro.calc.features.common import assessment_of
 from astro.calc.model import FeatureResult, Relation
-from astro.calc.refdata import GRAHAS_7
+from astro.calc.refdata import GRAHAS_7, ReferenceData
 from astro.calc.sensitivity import Assessment
 
 TEMPORAL_FRIEND_HOUSES = frozenset({2, 3, 4, 10, 11, 12})
@@ -24,6 +24,15 @@ COMPOUND = {
     ("neutral", "friend"): "friend", ("neutral", "enemy"): "enemy",
     ("enemy", "friend"): "neutral", ("enemy", "enemy"): "great_enemy",
 }
+
+
+def grades(ref: ReferenceData, a: str, b: str, sign_a: int,
+           sign_b: int) -> tuple[str | None, str, str | None]:
+    """(natural, temporal, compound) friendship of graha `a` towards graha `b` (BPHS ch. 3).
+    Natural is None when not modelled (the nodes); compound is then None too."""
+    natural = ref.natural_friendship(a, b)
+    temporal = "friend" if houses_apart(sign_a, sign_b) in TEMPORAL_FRIEND_HOUSES else "enemy"
+    return natural, temporal, None if natural is None else COMPOUND[(natural, temporal)]
 
 
 class Friendship:
@@ -42,13 +51,12 @@ class Friendship:
                     continue
                 a, b = f"graha:{ga}", f"graha:{gb}"
                 fa, fb = pos.fact("sign", a), pos.fact("sign", b)
-                natural = ref.natural_friendship(a, b)
-                h = houses_apart(ref.rashi_index(fa.value), ref.rashi_index(fb.value))
-                temporal = "friend" if h in TEMPORAL_FRIEND_HOUSES else "enemy"
+                natural, temporal, compound = grades(ref, a, b, ref.rashi_index(fa.value),
+                                                     ref.rashi_index(fb.value))
                 sens = Assessment.combine(assessment_of(fa), assessment_of(fb)).sensitivity
                 for system, value, s in (("natural", natural, "stable"),
                                          ("temporal", temporal, sens),
-                                         ("compound", COMPOUND[(natural, temporal)], sens)):
+                                         ("compound", compound, sens)):
                     rels.append(Relation(
                         id=f"{ctx.chart_id}/friendship/{system}/{a}/{b}", kind="friendship",
                         source=a, target=b, system=system, value=value,

@@ -5,7 +5,7 @@ values differ, and its margins must match the first sampled change on each side.
 import pytest
 
 from astro.calc.context import ChartContext, NormalizedBirth
-from astro.calc.core.timescale import MINUTE, jd_from_civil
+from astro.calc.core.timescale import MINUTE
 from astro.calc.engine import FeatureRequest as R
 from astro.calc.registry import default_engine
 
@@ -18,7 +18,7 @@ STEP = 2.0  # sampling grid, minutes
 
 DERIVED = {("aspects", "aspected_by"), ("aspects", "conjunct_with"),
            ("condition", "dignity"), ("condition", "combust"),
-           ("condition", "graha_yuddha"), ("relations", "occupants")}
+           ("condition", "graha_yuddha"), ("relations", "occupants"), ("houses", "house")}
 
 
 def sky(variant: int) -> FakeEphemeris:
@@ -47,11 +47,15 @@ def facts_at(eph, prof, t, u):
 
 
 @pytest.mark.parametrize("variant", [0, 1])
-@pytest.mark.parametrize("winner", ["north_latitude", "lesser_longitude"])
-def test_derived_sensitivity_matches_sampling(variant, winner):
-    eph = sky(variant)
-    prof = profile().model_copy(update={"graha_yuddha": profile().graha_yuddha.model_copy(
-        update={"winner": winner})})
+@pytest.mark.parametrize("winner,houses", [("north_latitude", "whole_sign"),
+                                           ("lesser_longitude", "whole_sign"),
+                                           ("north_latitude", "placidus"),
+                                           ("lesser_longitude", "sripati")])
+def test_derived_sensitivity_matches_sampling(variant, winner, houses):
+    eph = sky(variant)  # the fake's cusps are equal houses from the Lagna: a cusp system
+    prof = profile().model_copy(update={
+        "graha_yuddha": profile().graha_yuddha.model_copy(update={"winner": winner}),
+        "house_system": houses})
     at_t = facts_at(eph, prof, T0, U)
     n = int(U / STEP)
     samples = [facts_at(eph, prof, T0 + k * STEP * MINUTE, 0.0) for k in range(-n, n + 1)]

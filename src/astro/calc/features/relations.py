@@ -14,7 +14,15 @@ from astro.calc.core.angles import houses_apart
 from astro.calc.core.status import Status
 from astro.calc.engine import Deps, FeatureRequest
 from astro.calc.ephemeris.port import BODIES
-from astro.calc.features.common import assessment_of, sign_at, sign_piecewise, subject
+from astro.calc.features.common import (
+    assessment_of,
+    cusp_changes,
+    cusp_house_at,
+    piecewise,
+    sign_at,
+    sign_piecewise,
+    subject,
+)
 from astro.calc.features.houses import DEFAULT_FRAMES as HOUSE_DEFAULT_FRAMES
 from astro.calc.features.houses import frame_reference
 from astro.calc.model import ChartFact, FeatureResult, Relation
@@ -68,10 +76,13 @@ class Relations:
                     if h == n:
                         in_house.append(subject(b))
                 if frame == "lagna" and ctx.profile.house_system != "whole_sign":
-                    # cusp houses can be narrow: any sensitive placement may reach this house
-                    a = Assessment.combine(assessment_of(hs), *(
-                        assessment_of(f) for f in houses.facts
-                        if f.kind == "house" and f.frame == frame))
+                    # exact over every body's cusp crossings (houses can be narrow)
+                    def cusp_occupants(t: float, n: int = n) -> tuple[str, ...]:
+                        return tuple(subject(x) for x in BODIES
+                                     if cusp_house_at(ctx, x, t) == n)
+
+                    a = piecewise(ctx, [c for x in BODIES for c in cusp_changes(ctx, x)],
+                                  cusp_occupants)
                 else:  # sign-based: exact over the sign changes of the reference and bodies
                     ref_body = frame_reference(frame).split(":")[-1]
 

@@ -10,19 +10,23 @@
 
 from __future__ import annotations
 
-from functools import cache
 from typing import Any
 
 from astro.calc.context import ChartContext
-from astro.calc.core.angles import houses_apart, norm360
+from astro.calc.core.angles import houses_apart
 from astro.calc.core.status import CalcError, Reason, Status
-from astro.calc.core.timescale import MINUTE
 from astro.calc.engine import Deps, FeatureRequest
 from astro.calc.ephemeris.port import BODIES
-from astro.calc.features.common import LAGNA, assessment_of, subject
+from astro.calc.features.common import (
+    LAGNA,
+    assessment_of,
+    cusp_changes,
+    cusp_house_at,
+    subject,
+    times_assessment,
+)
 from astro.calc.model import ChartFact, FeatureResult
 from astro.calc.sensitivity import Assessment
-from astro.calc.solver import grid
 
 DEFAULT_FRAMES = ("lagna", "chandra", "surya")
 _FRAME_REF = {"lagna": LAGNA, "chandra": "graha:moon", "surya": "graha:sun"}
@@ -34,14 +38,6 @@ def frame_reference(frame: str) -> str:
     if frame.startswith("graha:"):
         return frame
     raise ValueError(f"unknown frame {frame!r}")
-
-
-def sripati_house(lon: float, cusps: tuple[float, ...]) -> int:
-    for i in range(12):
-        a, b = cusps[i], cusps[(i + 1) % 12]
-        if norm360(lon - a) < norm360(b - a):
-            return i + 1
-    raise AssertionError("cusps do not cover the circle")  # pragma: no cover
 
 
 class Houses:
@@ -56,9 +52,6 @@ class Houses:
         ref = ctx.refdata
         facts: list[ChartFact] = []
         unavailable: dict[str, str] = {}
-        b = ctx.birth
-        # cusps depend only on the instant: one calculation per grid sample for all bodies
-        cusps_at = cache(lambda t: ctx.ephemeris.cusps(t, b.latitude, b.longitude, ctx.profile))
         for frame in frames:
             ref_subj = frame_reference(frame)
             ref_sign_f = pos.fact("sign", ref_subj)
@@ -82,7 +75,9 @@ class Houses:
                 sign_f = pos.fact("sign", subj)
                 if use_cusps:
                     try:
-                        house, a = self._cusp_house(ctx, body, cusps_at)
+                        # exact: the house changes where the body crosses a moving cusp
+                        house = cusp_house_at(ctx, body, ctx.birth.jd_ut)
+                        a = times_assessment(ctx, cusp_changes(ctx, body))
                     except CalcError as e:  # cusps undefined: only this frame is unknown
                         frame_facts = [ctx.unknown("house", subject(bd), frame=frame)
                                        for bd in BODIES if subject(bd) != ref_subj]
@@ -102,28 +97,3 @@ class Houses:
                                          "lagna_system": ctx.profile.house_system,
                                          "other_frames_counting": "whole_sign",
                                          **({"unavailable": unavailable} if unavailable else {})})
-
-    @staticmethod
-    def _cusp_house(ctx: ChartContext, body: str, cusps_at) -> tuple[int, Assessment]:
-        b = ctx.birth
-
-        def house_at(t: float) -> int:
-            return sripati_house(ctx.ephemeris.body(body, t, ctx.profile).longitude,
-                                 cusps_at(t))
-
-        house = house_at(b.jd_ut)
-        if b.u_days <= 0:
-            return house, Assessment("stable", (None, None))
-        # Cusps move with the Lagna: sample on the Lagna grid (calc-review G-C9). Margins are
-        # accurate to one grid step.
-        step = min(ctx.step_days(LAGNA), b.u_days)
-        ts = grid(b.jd_ut - b.u_days, b.jd_ut + b.u_days, step)
-        changes = [t for t in ts if house_at(t) != house]
-        if not changes:
-            return house, Assessment("stable", (None, None))
-        before = [(b.jd_ut - t) / MINUTE for t in changes if t < b.jd_ut]
-        after = [(t - b.jd_ut) / MINUTE for t in changes if t > b.jd_ut]
-        return house, Assessment("sensitive", (min(before) if before else None,
-                                               min(after) if after else None))
-
-

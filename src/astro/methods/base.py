@@ -14,7 +14,6 @@ features and default profile; a `withdrawn` method is never used.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from functools import cache
 from importlib.metadata import entry_points
 from pathlib import Path
 from typing import Any, Literal, Protocol
@@ -22,6 +21,7 @@ from typing import Any, Literal, Protocol
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 from ruamel.yaml import YAML
 
+from astro.calc.core.files import VersionedCache, stamp
 from astro.calc.core.status import CalcError, Reason
 from astro.calc.engine import Feature, FeatureRequest
 
@@ -111,14 +111,11 @@ class MethodRegistry:
         return prof, adapter
 
 
-@cache
-def _load_registry(profile_dir: Path, stamp: tuple) -> MethodRegistry:
-    return MethodRegistry(profile_dir)
+_REGISTRY = VersionedCache()
 
 
 def load_registry(profile_dir: Path) -> MethodRegistry:
-    """Method profiles and adapters, discovered once per version of the profile files.
-    Plugins installed while the process runs need `_load_registry.cache_clear()`."""
+    """Method profiles and adapters, discovered once per version of the profile files. Plugins
+    installed while the process runs are picked up after `_REGISTRY.clear()`."""
     d = Path(profile_dir).resolve()
-    stamp = tuple(sorted((p.name, p.stat().st_mtime_ns) for p in d.glob("*.yaml")))
-    return _load_registry(d, stamp)
+    return _REGISTRY.get(d, stamp(d), lambda: MethodRegistry(d))

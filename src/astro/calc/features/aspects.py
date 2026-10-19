@@ -20,7 +20,7 @@ from astro.calc.features.common import (
     angle_changes,
     assess_angle,
     assessment_of,
-    lon_fn,
+    lon_at,
     piecewise,
     sign_at,
     sign_changes,
@@ -28,7 +28,7 @@ from astro.calc.features.common import (
     subject,
 )
 from astro.calc.model import ChartFact, FeatureResult, Relation
-from astro.calc.sensitivity import STABLE, Assessment
+from astro.calc.sensitivity import Assessment
 
 SPECIAL = {"mars": (4, 7, 8), "jupiter": (5, 7, 9), "saturn": (3, 7, 10)}
 NODE_ASPECTS = {"none": (), "seventh": (7,), "fifth_seventh_ninth": (5, 7, 9)}
@@ -114,10 +114,10 @@ class Aspects:
         lon = {s: pos.fact("longitude", s).value for s in bodies}
         orb_targets = () if conj.orb_deg is None else (conj.orb_deg, 360.0 - conj.orb_deg)
 
-        def pairs(t: float | None) -> set[frozenset[str]]:
+        def pairs(t: float) -> set[frozenset[str]]:
             out = set()
-            sg = signs_at(t) if t is not None else sign
-            lt = {x: lon_fn(ctx, names[x])(t) for x in bodies} if t is not None else lon
+            sg = signs_at(t)
+            lt = {x: lon_at(ctx, names[x], t) for x in bodies}
             for i, a in enumerate(bodies):
                 for b in bodies[i + 1:]:
                     if {a, b} == {"graha:rahu", "graha:ketu"}:
@@ -134,7 +134,7 @@ class Aspects:
             return [c for x in bodies if x != s
                     for c in angle_changes(ctx, names[s], names[x], orb_targets)]
 
-        now_pairs = pairs(None)
+        now_pairs = pairs(ctx.birth.jd_ut)
         for p in sorted(now_pairs, key=sorted):
             a, b = sorted(p, key=bodies.index)
             pa = (Assessment.combine(sign_a[a], sign_a[b]) if conj.mode == "same_sign"
@@ -149,7 +149,7 @@ class Aspects:
                 return tuple(x for x in bodies
                              if x != s and frozenset((s, x)) in pairs(t))
 
-            a = piecewise(ctx, change_times(s), partners) if ctx.birth.u_days > 0 else STABLE
+            a = piecewise(ctx, change_times(s), partners)
             facts.append(ctx.fact("conjunct_with", s, partners(ctx.birth.jd_ut), frame="rashi",
                                   sensitivity=a.sensitivity, margins=a.margins))
         return FeatureResult(feature_id=self.id, status=Status.OK, facts=tuple(facts),

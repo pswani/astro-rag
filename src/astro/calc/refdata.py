@@ -7,13 +7,13 @@ the passage index. `YamlReferenceData` loads `ontology/*.yaml` and checks refere
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import cache
 from pathlib import Path
 from typing import Literal, Protocol
 
 from ruamel.yaml import YAML
 
 from astro.calc.core.canonical import content_hash
+from astro.calc.core.files import VersionedCache, stamp
 
 Friendship = Literal["friend", "neutral", "enemy"]
 
@@ -267,17 +267,11 @@ class YamlReferenceData:
         return "graha:" + g if g else None
 
 
-def _stamp(directory: Path) -> tuple[tuple[str, int], ...]:
-    return tuple(sorted((p.name, p.stat().st_mtime_ns) for p in Path(directory).glob("*.yaml")))
-
-
-@cache
-def _load_refdata(directory: Path, stamp: tuple) -> YamlReferenceData:
-    return YamlReferenceData(directory)
+_REFDATA = VersionedCache()
 
 
 def load_refdata(directory: Path) -> YamlReferenceData:
     """The ontology for `directory`, loaded and integrity-checked once per version of its
-    files (an edited file is reloaded)."""
+    files: an edited file (size or mtime) is reloaded, and only the latest is kept."""
     d = Path(directory).resolve()
-    return _load_refdata(d, _stamp(d))
+    return _REFDATA.get(d, stamp(d), lambda: YamlReferenceData(d))
