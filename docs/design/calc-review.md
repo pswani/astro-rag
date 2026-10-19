@@ -59,7 +59,7 @@ Each layer depends only on the layers above it.
 | Lunar month, samvatsara, ayana, ritu | PAN-3 | Variant conventions are undecided (G-PN2). |
 | Period-lord context | DAS-5 | Needs functional roles (G-R2) and strength. A skeleton over available facts can be built earlier. |
 | Gochara vedha, kakshya scoring | TRN-4 | Needs STR-1 and the vedha/kakshya tables (G-T4). |
-| Persistent fact cache | CALC-8 | Needs the encrypted store (§16). Build against the cache port with an in-memory implementation now. |
+| Persistent fact cache | CALC-8 | Needs the encrypted store (§16). Build against the cache port with an in-memory implementation now. **Update 2026-10-19:** designed in [phase1-foundations.md](phase1-foundations.md) §2.5 (`StoreFactCache`, Pydantic JSON, chart-scoped rows); the port gains `chart_id`. |
 | Other dasha systems, muhurta kalas, upagrahas, varga variants, phase-7 adapters | DAS-3, PAN-4, CALC-5, VAR-4, SCH-JAI/KP/TAJ/PRS/MUH/CMP-1 | Phase 7. The design gives one line each. Each needs its own spec before its bundle starts. |
 | C items | VAR-3, STR-3, TRN-7, SCH-LK-1, SCH-WES-1 | Not planned. |
 

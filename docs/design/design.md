@@ -2,12 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | Baseline (rev 5, input scope revised) |
-| **Date** | 2026-10-18 |
+| **Status** | Baseline (rev 6: phase-1 closure design folded into §4.4, §5.3, §8, §9.1, §16.1, §20, §23) |
+| **Date** | 2026-10-19 |
 | **Requirements** | [requirements.md](../req/requirements.md) and [memory.md](../req/memory.md). Requirement IDs (e.g. `DAS-2`, `MEM-SES-2`) are cited inline; §22 traces every one. |
 | **Supersedes** | `rag-claude.md` (rev 3) and `rag-gpt.md` (both removed; see git history) |
 | **Review log** | [review.md](review.md): conflicts resolved, defects fixed, rabbit holes removed |
 | **Calc review** | [calc-review.md](calc-review.md): build readiness, open gaps and reuse plan for §7 (pending adoption) |
+| **Phase-1 closure** | [phase1-foundations.md](phase1-foundations.md): detailed design of the private store, ontology loader and matcher, source register and calculation eval harness; refines §5.3, §8, §9.1, §16.1 and §20 below |
 
 The requirements say **what** and how acceptance is shown. This document says **how**: architecture, schemas, algorithms, technology and delivery order. Values marked *initial* are starting points that the evaluation suite (§19) is allowed to change.
 
@@ -145,15 +146,18 @@ data/raw/<source_id>/      original files (not in git)
 src/astro/normalize/       request validation, gazetteer, tz, PII scrubber (§6)
 src/astro/calc/            ephemeris, chart, panchanga, vargas, strength, dasha, events, sensitivity (§7)
 src/astro/methods/         method adapters: parashari, bnn, (kp, jaimini, tajika, …) (§7.10)
-src/astro/ontology.py      loader, alias index, canonicalizer (§8, §12.2)
+src/astro/ontology/        loader, folding, alias matcher; canonicalizer in phase 2 (§8, §12.2)
+src/astro/sources.py       source register model and checks (§9.1)
 src/astro/rules/           DSL operators, evaluator, decision log (§10)
 src/astro/ingest/          parse, OCR gate, chunkers, tagger, indexer, extractor (§9)
 src/astro/retrieval/       search, routes, coverage, context assembly (§12)
 src/astro/workflows/       LangGraph graphs and open agent (§13)
 src/astro/bundle.py        evidence bundle schema + integrity checks (§14)
 src/astro/llm.py           role → model routing, privacy-mode enforcement (§15)
-src/astro/store.py         encrypted private store (§16)
-evals/                     fixtures, golden set, scenarios, runners (§19)
+src/astro/store/           encrypted private store: keys, migrations, personal-data registry, persons, fact cache (§16)
+src/astro/obs/             log redaction (§16.1); run traces later (§18)
+src/astro/evals/           eval runners (§19)
+evals/                     fixtures, golden set, scenarios (§19)
 ```
 
 ## 5. Data model and storage
@@ -195,7 +199,7 @@ Nothing personal is written to Qdrant, git, plain logs or (in `local` mode) any 
 | Fact | `<chart>/<kind>/<subject>[/<frame>][/<varga>]` | `chart:9f3a…/house/saturn/lagna/D1` |
 | Run | `run:<ulid>` | |
 
-Chart IDs use an HMAC with the private-store key, not a plain hash: the space of birth dates, times and places is small enough that a plain hash could be reversed by brute force.
+Chart IDs use an HMAC, not a plain hash: the space of birth dates, times and places is small enough that a plain hash could be reversed by brute force. The HMAC key is derived from the private store's master secret with HKDF, separately from the database key ([phase1-foundations.md](phase1-foundations.md) §2.2). Two persons with identical birth data share a chart ID and its cached facts.
 
 In answers, facts and passages are cited by short bundle-local handles (`F7`, `P3`), which the bundle maps to full IDs. Passages display as `[BPHS 24.12]` (`OUT-1`).
 
@@ -463,11 +467,12 @@ rahu:
 
 Rules:
 
-- **Aliases** cover Sanskrit, IAST, Devanagari, English and Hindi (regional names in phase 6). They drive deterministic tagging, query canonicalization (§12.2) and sparse-index normalization.
-- **Ambiguous names** (Guru, Manda, "yoga", "nadi") are excluded from the alias matcher and resolved by the LLM tagger in context.
+- **Aliases** cover Sanskrit, IAST, Devanagari, English and Hindi (regional names in phase 6). They drive deterministic tagging, query canonicalization (§12.2) and sparse-index normalization. They are compared after a fixed folding (NFC; Latin diacritics dropped and case-folded; Devanagari class nasals normalized to anusvara) on tokens that keep Devanagari vowel signs. Transliteration variants are listed, not guessed.
+- **Ambiguous names** (Guru, Manda, "yoga", "nadi") are excluded from the alias matcher and resolved by the LLM tagger in context. The matcher reports them, and any alias listed by more than one entity, as ambiguous with their candidates; it never picks one. A folded alias may be a plain name of at most one entity, and a name that is ambiguous anywhere must be ambiguous everywhere. Labels of stored persons are passed in as extra candidates, so "Ravi" with a stored person *Ravi* is ambiguous rather than the Sun.
+- **Two versions:** the calculation reads a projection of the ontology whose hash (`refdata.version`) keys the fact cache, so alias edits do not invalidate facts; `ontology_version` hashes everything and goes on passages and releases.
 - **Confusables are separate entity types** (`KNW-12`): `nitya_yoga:*` vs `yoga:*`; `koota:nadi` vs `school:bnn` / `school:nadi_other`; `rashi:*` vs `bhava:*`; `nakshatra:*` (sectors) — individual stars are not modelled.
 - **Calculation reference data** (dasha years, varga rules, bindu tables) is read by the calculation service from the ontology, never from the vector index (`KNW-11`).
-- CI validates referential integrity: every ID referenced anywhere resolves, and every disputed value has a source.
+- CI validates referential integrity: every ID referenced anywhere resolves, and every disputed value has a source. A file marked `reviewed` cites `<edition_id>:<locator>` sources that resolve in the register (§9.1), so the ontology review also waits on open question 1. Loader, checks and the KNW-12 fixtures: [phase1-foundations.md](phase1-foundations.md) §3.
 
 ## 9. Sources and ingestion
 
@@ -485,15 +490,20 @@ bphs_santhanam_1984:
   script: [devanagari, latin]
   isbn: …
   source_uri: data/raw/bphs_santhanam_1984/
+  files: [{path: …, sha256: …, bytes: …}]   # required from acquired on
   rights: licensed            # public_domain | licensed | restricted | unknown (= restricted)
+  rights_basis: …             # why; required unless unknown
+  external_processing: denied # allowed | denied; gates an API VLM pass (§9.3)
   school: parashari
   lineage: bphs
   coverage: [ch1-97]
   ocr_condition: good
   verse_pattern: '॥\s*(\d+)\s*॥'
   reviewer: <astrologer>
-  status: acquired            # candidate | acquired | parsed | reviewed | published | withdrawn
+  status: acquired            # candidate | acquired | parsed | reviewed | published | withdrawn (+ withdrawn_reason)
 ```
+
+`astro sources check` validates the schema and the fields each status requires; `--files` checks the local files against their hashes. Rights per build (ING-7) are enforced when a collection is built. Details: [phase1-foundations.md](phase1-foundations.md) §4.
 
 No file is parsed until its register entry exists. The Core source set is fixed by `ING-8`: one BPHS edition (phase 2), R. G. Rao's *Bhrigu Nandi Nadi* (phase 5), Puranic sources for the Core story set (phase 6) and 1–2 named modern authors (phase 6). The edition above is an example pending open question 1.
 
@@ -1051,11 +1061,12 @@ Streaming partial output starts at the synthesizer. If measured p95 misses the t
 
 ### 16.1 Personal data (`NFR-6`)
 
-- **Storage:** `private.db` uses SQLCipher (AES-256). The key is generated on first run and stored in the macOS Keychain.
+- **Storage:** `private.db` uses SQLCipher 4 (AES-256) through `sqlcipher3`, outside the repository. `astro store init` generates a 32-byte master secret and stores it in the OS keychain (macOS Keychain on the reference deployment) or, where there is none, in a `0600` key file; a non-secret sidecar records which. HKDF derives the raw database key and the chart-ID key from it. There is no plaintext fallback. Details: [phase1-foundations.md](phase1-foundations.md) §2.
 - **What is personal:** persons, normalized inputs, chart facts, runs, bundles, answers and LangGraph checkpoints. All live in this database.
 - **Deletion:** `astro person delete <id>` cascades through every table keyed by `person_id` or `chart_id`, with the scope of memory.md MEM-X-4 (§17.7). It reports counts and then runs `VACUUM`. A test asserts that no row referencing the person remains.
 - **Backups** of `private.db` are the operator's responsibility and stay encrypted (requirements R5).
-- **Logs:** plain logs go through a redaction filter that drops fields named in a deny-list and pattern-matches dates, times and coordinates. A test scans the log output of the scenario suite for fixture birth data.
+- **Deletion completeness:** a registry classifies every table as personal (with the query selecting a person's rows) or not; a test fails on any unclassified table, and the same registry drives `astro person show` (MEM-X-5) and the deletion report.
+- **Logs:** every entry point installs a redacting formatter (Python's unconfigured `lastResort` handler would bypass it). It redacts the rendered message, exception and stack text, not the line's own timestamp: dates, times and coordinates by pattern, plus the place and label values of stored persons and of the current request. A test scans the log output of the scenario suite for fixture birth data.
 
 ### 16.2 Security (`AGT-6`, `NFR-10`)
 
@@ -1285,9 +1296,9 @@ Each layer has its own runner and report, so a failure is attributable to one la
 
 | Phase | Work | Exit |
 |---|---|---|
-| **1. Foundations** | Request model, normalizer (worldwide lookup/coordinates, calendar adapters, date-specific tz and documented historical standards, precision), encrypted store with deletion and log redaction, calc profiles, positions/condition/houses/REL-1, D1/D9/D10, birth panchanga, Vimshottari MD/AD/PD, ontology core with confusables, source register, fact model, CI skeleton | EVAL-1 calc fixtures pass at NFR-1 tolerances; ontology reviewed; deletion and redaction tests pass |
+| **1. Foundations** | Request model, normalizer (worldwide lookup/coordinates, calendar adapters, date-specific tz and documented historical standards, precision), encrypted store with person storage (birth records versioned), persistent fact cache, inspection, deletion and log redaction, calc profiles, positions/condition/houses/REL-1, D1/D9/D10, birth panchanga, Vimshottari MD/AD/PD, ontology core with aliases, confusables and the alias matcher, source register, fact model, calc eval harness, CI skeleton ([phase1-foundations.md](phase1-foundations.md)) | EVAL-1 calc fixtures pass at NFR-1 tolerances; ontology reviewed (needs open questions 1 and 3); deletion and redaction tests pass |
 | **2. First corpus** | BPHS edition: parse, OCR gate, verse chunking, locators, alignment, tagging, canonical text, Qdrant release, licence filters; concept route (open agent); planner (intent); bundle + integrity; answers with citations; injection defence | Concept and alias evals at target; EVAL-2/3/5 baselines recorded |
-| **3. Parashari rules and reading** | DSL + evaluator + decisions; extraction and review workflow; cards for career/marriage/education; topic maps (11); dependency plan and closure; CALC-4, REL-2/3, CALC-7 sensitivity; rule-linked, factor and contrary retrieval; coverage, budgets and context assembly; chart workflow, analyst, checker, synthesizer; memory core: person registry with versions and confirmation, session slots and carry-forward, `needs_input` suspension, reading records, preferences, flags, inspection and deletion (§17) | EVAL-4 pass; EVAL-6 rubric at target; scenarios for career, uncertain time, budget, failure, draft rule |
+| **3. Parashari rules and reading** | DSL + evaluator + decisions; extraction and review workflow; cards for career/marriage/education; topic maps (11); dependency plan and closure; CALC-4, REL-2/3, CALC-7 sensitivity; rule-linked, factor and contrary retrieval; coverage, budgets and context assembly; chart workflow, analyst, checker, synthesizer; memory core on the phase-1 store: reference resolution, corrections as new birth-record versions, proposals and confirmation, session slots and carry-forward, `needs_input` suspension, reading records, preferences, flags, inspection and deletion (§17) | EVAL-4 pass; EVAL-6 rubric at target; scenarios for career, uncertain time, budget, failure, draft rule |
 | **4. Timing** | `periods_in`, sandhi, period-lord context; event solver, named states, eclipses, Ashtakavarga and Shadbala, vedha/kakshya; remaining vargas; lunar calendar; dasha and transit cards; timing retrieval and layers; `recall`, `what_changed`, native notes (§17.5, §17.6) | EVAL-7 at target |
 | **5. BNN** | BNN adapter, karaka roles, relations, triggers; Rao text ingestion; BNN cards; worked cases; per-method analysts and comparison | BNN eval and contamination = 0 |
 | **6. Stories, modern, Core completion** | Puranic episodes with variants and link attribution; modern-author sources; contemporary route; regional aliases; remaining Core rule-card review | Story and contemporary evals; all Core scenarios pass; **Core release** |
@@ -1448,7 +1459,8 @@ At 1024-d float32 plus sparse vectors and payload, that is about 150 MB. Even a 
 | Edition licensing | Cannot index a preferred translation | Register-first; private vs distributable builds |
 | Historical clock-standard uncertainty | Incorrect normalized instant and dependent facts | Library-backed resolution or documented input; record `tz_assumption`; clarify specific ambiguity (§6.2) |
 | Disputed rules between texts | Confusing answers | Attribution, `contradicts`, per-source decisions; never vote |
-| LangGraph's SQLite checkpointer may not accept a SQLCipher connection | Session state unencrypted | Verify in phase 1; otherwise a small custom `BaseCheckpointSaver` over the encrypted store |
+| ~~LangGraph's SQLite checkpointer may not accept a SQLCipher connection~~ **Closed 2026-10-19** | — | Verified: `SqliteSaver` works over `sqlcipher3` once a six-line subclass catches `sqlcipher3`'s own `OperationalError` in `setup()`; interrupt, resume after reopen and `delete_thread` all work ([phase1-foundations.md](phase1-foundations.md) §2.8) |
+| No OS keychain backend (headless Linux) | Store cannot keep its key | `0600` key file provider, chosen at `astro store init` |
 
 | Open decision | Blocks | Default if not decided |
 |---|---|---|

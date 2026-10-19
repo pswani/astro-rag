@@ -123,6 +123,41 @@ Still out of scope: functional roles (G-R2 needs a sourced table), Shadbala (G-S
   - the determinism claim is qualified by `--as-of`;
   - the R column is right-aligned, and the header's spacing is kept.
 
+## F Phase-1 closure ([phase1-foundations.md](../design/phase1-foundations.md))
+
+Design reviewed in four rounds with dry runs (its §8). Build order B → C → A → D, because the register's `school` check uses the ontology.
+
+**F1 Ontology (design B)**
+- [ ] F1.1 `refdata.version` hashes a calculation projection; test: an alias edit leaves it unchanged
+- [ ] F1.2 Restructure `panchanga.yaml` to `{id, names}` entries; `YamlReferenceData` adapted; determinism and oracle tests unchanged
+- [ ] F1.3 `astro.ontology`: Pydantic models per kind, loader, `ontology_version`, `fold()` and the Devanagari-aware tokenizer
+- [ ] F1.4 New files: `bhavas`, `dignities`, `points`, `yogas`, `deities`, `topics`, `methods`, `kootas`; aliases in Sanskrit, IAST, Devanagari, English and Hindi for every entity (`provisional`)
+- [ ] F1.5 Integrity checks 1–8, including alias collisions and the calc/ontology ID agreement; `astro ontology check` in CI
+- [ ] F1.6 `AliasMatcher` (longest match, ambiguous spans, `reserved`, house ordinals); KNW-12 confusable fixtures
+- [ ] F1.7 `astro ontology match`, `astro ontology review-pack`
+
+**F2 Source register (design C)**
+- [ ] F2.1 `sources/register.yaml` (empty) and the Pydantic model with per-status rules
+- [ ] F2.2 `astro sources check [--files]`, `astro sources list`; CI runs the check
+
+**F3 Private store (design A)**
+- [ ] F3.1 Dependencies `sqlcipher3==0.6.4`, `keyring`; import contracts for store, ontology, sources
+- [ ] F3.2 `store.keys`: HKDF (RFC 5869 test vectors), keychain and key-file providers, sidecar, `StaticKeyProvider` for tests
+- [ ] F3.3 `store.db`: connection pragmas, wrong-key error, migrations, location and permission checks
+- [ ] F3.4 Schema v1; personal-data registry; unclassified-table test
+- [ ] F3.5 Persons: add (with normalization), list, show, delete with twin-chart handling, `VACUUM`; deletion test
+- [ ] F3.6 `StoreFactCache`; `CachePort.put(..., chart_id=)`; determinism test through the store; LRU `gc`
+- [ ] F3.7 `astro.obs.redact`: formatter, value registration (store and normalizer), `configure_logging()` in every entry point; redaction tests
+- [ ] F3.8 CLI: `astro store init|info|export-key|gc`, `astro person add|list|show|delete`, `astro chart --person`
+
+**F4 Calculation eval harness (design D)**
+- [ ] F4.1 Fixture model, `settings_map.yaml` with `fixed:` entries, profile variants
+- [ ] F4.2 Comparison rules and the boundary classification; tests with perturbed engine-built fixtures
+- [ ] F4.3 `evals/calc/edge_cases.yaml` (fixture labels vs engine-test IDs); `astro eval calc [--gate] [--report]`
+- [ ] F4.4 Reviewer pack (`--pack`): 30 charts with solver-found boundary cases and the settings to use
+
+**Waiting on people (phase-1 exit):** reviewer for the ontology review and JHora exports (open question 3); BPHS edition registered before any ontology file can be marked reviewed (open question 1).
+
 ### D11 review rounds
 
 | Round | Main findings | Root-cause fix |
@@ -181,6 +216,7 @@ ruff check src tests scripts && lint-imports && pytest
 | Date | Change |
 |---|---|
 | 2026-10-19 | List created |
+| 2026-10-19 | F added: phase-1 closure (ontology, register, private store, calc eval harness), from the reviewed [phase1-foundations.md](../design/phase1-foundations.md) |
 | 2026-10-19 | E done: PDF report alongside the terminal output; the North Indian diamond is the default chart style |
 | 2026-10-19 | D done: requirement gaps closed (CALC-2, CALC-3 Placidus, REL-1, TRN-3, DAS-5 partial, VAR-2, §7.10 adapters, INP-1 provenance); 7 review rounds; 412 tests; [alignment.md](alignment.md) |
 | 2026-10-19 | C done: `astro chart` / `astro places` / `astro ephemeris`, 28 CLI tests, 10 review findings fixed. The offline city table covers B4.5 for names in GeoNames cities1000; alternate names (e.g. Bangalore) still need the full dump |
