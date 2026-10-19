@@ -22,8 +22,8 @@ from astro.calc.features.common import (
     assessment_of,
     cusp_changes,
     cusp_house_at,
+    piecewise,
     subject,
-    times_assessment,
 )
 from astro.calc.model import ChartFact, FeatureResult
 from astro.calc.sensitivity import Assessment
@@ -77,7 +77,8 @@ class Houses:
                     try:
                         # exact: the house changes where the body crosses a moving cusp
                         house = cusp_house_at(ctx, body, ctx.birth.jd_ut)
-                        a = times_assessment(ctx, cusp_changes(ctx, body))
+                        a = piecewise(ctx, cusp_changes(ctx, body),
+                                      lambda t, body=body: cusp_house_at(ctx, body, t))
                     except CalcError as e:  # cusps undefined: only this frame is unknown
                         frame_facts = [ctx.unknown("house", subject(bd), frame=frame)
                                        for bd in BODIES if subject(bd) != ref_subj]

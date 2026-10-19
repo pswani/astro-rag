@@ -6,19 +6,27 @@ its inputs changes (a sign, pada or cusp crossing, an angle reaching an orb, a s
 crossing). Those instants are solved exactly once per chart and memoized on the context, so the
 positions, houses, condition and aspects features share one set of solves:
 
-- `times_assessment` turns instants that each change the fact into an assessment.
-- `piecewise` evaluates a derived fact once inside every piece between the instants of its
-  inputs; it is sensitive when a piece disagrees with the value at t, and its margins are the
-  nearest instants where it actually changes.
+Every assessment goes through `piecewise`: the solved instants only propose cut points, and the
+fact's own value function is evaluated inside every piece and at both ends of the closed
+interval. Sensitivity is therefore decided by values, never by a crossing's direction or the
+root finder's tolerance; the instants only make the margins exact.
 """
 
 from __future__ import annotations
 
+from bisect import bisect_right
 from collections.abc import Callable, Hashable, Iterable
 
 from astro.calc.context import ChartContext
-from astro.calc.core.angles import PADA_SPAN, SIGN_SPAN, norm360, sign_index
-from astro.calc.core.timescale import MINUTE, SECOND
+from astro.calc.core.angles import (
+    PADA_SPAN,
+    SIGN_SPAN,
+    nakshatra_index,
+    norm360,
+    pada_count,
+    sign_index,
+)
+from astro.calc.core.timescale import MINUTE
 from astro.calc.ephemeris.port import BODIES, Body, BodyState
 from astro.calc.model import ChartFact
 from astro.calc.sensitivity import STABLE, UNKNOWN, Assessment
@@ -57,15 +65,32 @@ def _memo(ctx: ChartContext, key: tuple, compute: Callable[[], object]):
     return ctx.memo[key]
 
 
+_STATES_MAX = 50_000  # one-off root-finder probes are not worth keeping forever
+
+
+def _states(ctx: ChartContext) -> dict:
+    states = ctx.memo.setdefault("states", {})
+    if len(states) > _STATES_MAX:
+        states.clear()
+    return states
+
+
+def _state(ctx: ChartContext, key: tuple, compute: Callable[[], object]):
+    states = _states(ctx)
+    if key not in states:
+        states[key] = compute()
+    return states[key]
+
+
 def state_at(ctx: ChartContext, body: str, t: float) -> BodyState:
-    return _memo(ctx, ("state", body, t),
-                 lambda: ctx.ephemeris.body(body, t, ctx.profile))  # type: ignore[arg-type]
+    return _state(ctx, ("state", body, t),
+                  lambda: ctx.ephemeris.body(body, t, ctx.profile))  # type: ignore[arg-type]
 
 
 def lon_at(ctx: ChartContext, body: str, t: float) -> float:
     if body == LAGNA:
         b = ctx.birth
-        return _memo(ctx, ("lagna", t), lambda: ctx.ephemeris.ascendant(
+        return _state(ctx, ("lagna", t), lambda: ctx.ephemeris.ascendant(
             t, b.latitude, b.longitude, ctx.profile))
     return state_at(ctx, body, t).longitude
 
@@ -76,8 +101,8 @@ def sign_at(ctx: ChartContext, body: str, t: float) -> int:
 
 def cusps_at(ctx: ChartContext, t: float) -> tuple[float, ...]:
     b = ctx.birth
-    return _memo(ctx, ("cusps", t),
-                 lambda: ctx.ephemeris.cusps(t, b.latitude, b.longitude, ctx.profile))
+    return _state(ctx, ("cusps", t),
+                  lambda: ctx.ephemeris.cusps(t, b.latitude, b.longitude, ctx.profile))
 
 
 def cusp_house(lon: float, cusps: tuple[float, ...]) -> int:
@@ -101,30 +126,25 @@ def _window(ctx: ChartContext) -> tuple[float, float] | None:
     return None if b.u_days <= 0 else (b.jd_ut - b.u_days, b.jd_ut + b.u_days)
 
 
-def _search(ctx: ChartContext) -> tuple[float, float] | None:
-    """The window the solver searches. The solver reports crossings in (t0, t1], so it starts
-    a second early to also report a change exactly at t − u."""
-    w = _window(ctx)
-    return None if w is None else (w[0] - SECOND, w[1])
 
-
-def _motion(ctx: ChartContext, body: str) -> tuple[Callable, Callable | None, float]:
-    """(longitude, speed or None for monotone motion, sampling step) of a body or the Lagna."""
+def _motion(ctx: ChartContext, body: str) -> tuple[Callable, dict]:
+    """The longitude of a body or the Lagna, and the solver arguments: the sampling step and
+    the memoized stations (none for monotone motion)."""
     step = min(ctx.step_days(body), ctx.birth.u_days)
     lon = lambda t: lon_at(ctx, body, t)  # noqa: E731
     if body == LAGNA or not ctx.needs_speed(body):
-        return lon, None, step
-    return lon, (lambda t: state_at(ctx, body, t).speed), step
+        return lon, {"step": step, "stations": ()}
+    return lon, {"step": step, "stations": station_times(ctx, body)}
 
 
 def zodiac_crossings(ctx: ChartContext, body: str) -> tuple[Crossing, ...]:
     """Every pada boundary crossing of `body`; sign and nakshatra boundaries are among them."""
     def compute():
-        w = _search(ctx)
+        w = _window(ctx)
         if w is None or (body == LAGNA and not ctx.birth.time_known):
             return ()
-        lon, speed, step = _motion(ctx, body)
-        return tuple(crossings(lon, *w, step=step, speed=speed, width=PADA_SPAN))
+        lon, kw = _motion(ctx, body)
+        return tuple(crossings(lon, *w, width=PADA_SPAN, **kw))
     return _memo(ctx, ("zodiac", body), compute)
 
 
@@ -140,11 +160,11 @@ def sign_changes(ctx: ChartContext, body: str) -> tuple[float, ...]:
 def width_changes(ctx: ChartContext, body: str, width: float) -> tuple[float, ...]:
     """Crossings of every multiple of `width` degrees (equal-part varga boundaries)."""
     def compute():
-        w = _search(ctx)
+        w = _window(ctx)
         if w is None or (body == LAGNA and not ctx.birth.time_known):
             return ()
-        lon, speed, step = _motion(ctx, body)
-        return tuple(c.jd for c in crossings(lon, *w, step=step, speed=speed, width=width))
+        lon, kw = _motion(ctx, body)
+        return tuple(c.jd for c in crossings(lon, *w, width=width, **kw))
     return _memo(ctx, ("width", body, width), compute)
 
 
@@ -154,29 +174,25 @@ def target_changes(ctx: ChartContext, body: str,
     targets = tuple(sorted(targets))
 
     def compute():
-        w = _search(ctx)
+        w = _window(ctx)
         if w is None or not targets or (body == LAGNA and not ctx.birth.time_known):
             return ()
-        lon, speed, step = _motion(ctx, body)
-        return tuple(c.jd for c in crossings(lon, *w, step=step, speed=speed, targets=targets))
+        lon, kw = _motion(ctx, body)
+        return tuple(c.jd for c in crossings(lon, *w, targets=targets, **kw))
     return _memo(ctx, ("targets", body, targets), compute)
-
-
-def _symmetric(targets: tuple[float, ...]) -> bool:
-    return set(targets) == {norm360(-x) for x in targets}
 
 
 def angle_changes(ctx: ChartContext, a: str, b: str,
                   targets: Iterable[float]) -> tuple[float, ...]:
-    """Instants where the angle a − b crosses any of `targets`. For a symmetric target set
-    (x and 360 − x) the instants do not depend on the order of a and b, so each pair is
-    solved once."""
-    targets = tuple(sorted(norm360(x) for x in targets))
-    if _symmetric(targets) and b < a:
-        a, b = b, a
+    """Instants where the angle a − b crosses any of `targets`. The angle b − a crosses
+    360° − x at the same instants, so the pair is put in a canonical order and solved once."""
+    if b < a:
+        a, b, targets = b, a, [norm360(-x) for x in targets]
+    # 1e-9° canonical rounding (CALC-9) so 360 − (360 − x) keys the same memo entry as x
+    targets = tuple(sorted(round(norm360(x), 9) % 360.0 for x in targets))
 
     def compute():
-        w = _search(ctx)
+        w = _window(ctx)
         if w is None:
             return ()
         step = min(ctx.step_days(a), ctx.step_days(b), ctx.birth.u_days)
@@ -189,11 +205,11 @@ def angle_changes(ctx: ChartContext, a: str, b: str,
 
 def station_times(ctx: ChartContext, body: str) -> tuple[float, ...]:
     def compute():
-        w = _search(ctx)
+        w = _window(ctx)
         if w is None or not ctx.needs_speed(body):
             return ()
-        _, speed, step = _motion(ctx, body)
-        return tuple(find_stations(speed, *w, step))
+        speed = lambda t: state_at(ctx, body, t).speed  # noqa: E731
+        return tuple(find_stations(speed, *w, min(ctx.step_days(body), ctx.birth.u_days)))
     return _memo(ctx, ("stations", body), compute)
 
 
@@ -202,7 +218,7 @@ def latitude_crossings(ctx: ChartContext, a: str, b: str) -> tuple[float, ...]:
     a, b = sorted((a, b))
 
     def compute():
-        w = _search(ctx)
+        w = _window(ctx)
         if w is None:
             return ()
         diff = lambda t: state_at(ctx, a, t).latitude - state_at(ctx, b, t).latitude  # noqa
@@ -215,7 +231,7 @@ def cusp_changes(ctx: ChartContext, body: str) -> tuple[float, ...]:
     """Instants where `body` crosses a house cusp (Sripati, Placidus). Cusps move with the
     Lagna, so the search samples on the Lagna step."""
     def compute():
-        w = _search(ctx)
+        w = _window(ctx)
         if w is None or not ctx.birth.time_known:
             return ()
         step = min(ctx.step_days(LAGNA), ctx.birth.u_days)
@@ -227,32 +243,25 @@ def cusp_changes(ctx: ChartContext, body: str) -> tuple[float, ...]:
     return _memo(ctx, ("cusp", body), compute)
 
 
-# -- assessments -------------------------------------------------------------------------------
-
-def times_assessment(ctx: ChartContext, times: Iterable[float]) -> Assessment:
-    """Assessment of a fact that changes at every one of `times`."""
-    b = ctx.birth
-    w = _window(ctx)
-    if w is None:
-        return STABLE
-    inside = [c for c in times if w[0] <= c <= w[1]]
-    if not inside:
-        return STABLE
-    before = [(b.jd_ut - c) / MINUTE for c in inside if c <= b.jd_ut]
-    after = [(c - b.jd_ut) / MINUTE for c in inside if c > b.jd_ut]
-    return Assessment("sensitive", (min(before) if before else None,
-                                    min(after) if after else None))
-
+# -- assessments ---------------------------------------------------------------------------
 
 def _unknown_lagna(ctx: ChartContext, body: str) -> bool:
     return body == LAGNA and not ctx.birth.time_known
+
+
+def _sector(sorted_targets: tuple[float, ...], x: float) -> int:
+    """Which arc between consecutive targets holds x (the arc across 0° counts once)."""
+    return bisect_right(sorted_targets, norm360(x)) % len(sorted_targets)
 
 
 def assess_zodiac(ctx: ChartContext, body: str) -> dict[str, Assessment]:
     """Sign, nakshatra and pada sensitivity of `body` from one crossing search."""
     if _unknown_lagna(ctx, body):
         return {k: UNKNOWN for k in ZODIAC_MULTIPLES}
-    return {k: times_assessment(ctx, _zodiac_times(ctx, body, m))
+    times = tuple(c.jd for c in zodiac_crossings(ctx, body))
+    value = {"pada": pada_count, "nakshatra": nakshatra_index, "sign": sign_index}
+    return {k: piecewise(ctx, _zodiac_times(ctx, body, m) if k != "pada" else times,
+                         lambda t, f=value[k]: f(lon_at(ctx, body, t)))
             for k, m in ZODIAC_MULTIPLES.items()}
 
 
@@ -261,49 +270,56 @@ def assess_width(ctx: ChartContext, body: str, width: float) -> Assessment:
     if _unknown_lagna(ctx, body):
         return UNKNOWN
     if width == SIGN_SPAN:
-        return times_assessment(ctx, sign_changes(ctx, body))
-    if width == PADA_SPAN:
-        return times_assessment(ctx, _zodiac_times(ctx, body, 1))
-    return times_assessment(ctx, width_changes(ctx, body, width))
+        times = sign_changes(ctx, body)
+    elif width == PADA_SPAN:
+        times = _zodiac_times(ctx, body, 1)
+    else:
+        times = width_changes(ctx, body, width)
+    n = round(360.0 / width)
+    return piecewise(ctx, times, lambda t: min(int(norm360(lon_at(ctx, body, t)) * n // 360),
+                                               n - 1))
 
 
 def assess_boundaries(ctx: ChartContext, body: str, targets: Iterable[float]) -> Assessment:
     """Sensitivity of a fact of `body` that changes at the given absolute longitudes."""
     if _unknown_lagna(ctx, body):
         return UNKNOWN
-    return times_assessment(ctx, target_changes(ctx, body, targets))
+    ts = tuple(sorted({norm360(x) for x in targets}))
+    if not ts:
+        return STABLE
+    return piecewise(ctx, target_changes(ctx, body, ts),
+                     lambda t: _sector(ts, lon_at(ctx, body, t)))
 
 
 def assess_angle(ctx: ChartContext, a: str, b: str, targets: Iterable[float]) -> Assessment:
     """Sensitivity of a fact that changes when the angle a − b crosses any of `targets`."""
-    return times_assessment(ctx, angle_changes(ctx, a, b, targets))
+    ts = tuple(sorted({norm360(x) for x in targets}))
+    return piecewise(ctx, angle_changes(ctx, a, b, ts),
+                     lambda t: _sector(ts, lon_at(ctx, a, t) - lon_at(ctx, b, t)))
 
 
 def assess_station(ctx: ChartContext, body: Body) -> Assessment:
     """Retrograde status changes only at a station."""
-    return times_assessment(ctx, station_times(ctx, body))
+    return piecewise(ctx, station_times(ctx, body),
+                     lambda t: state_at(ctx, body, t).speed < 0)
 
 
 def piecewise(ctx: ChartContext, change_times: Iterable[float],
               value_at: Callable[[float], Hashable]) -> Assessment:
-    """Exact sensitivity of a derived fact (module doc)."""
+    """Exact sensitivity of a fact over the closed interval [t − u, t + u] (module doc)."""
     w = _window(ctx)
     if w is None:
         return STABLE
     t = ctx.birth.jd_ut
     lo, hi = w
-    # the interval is closed: changes exactly at t − u or t + u happen inside it, and the
-    # value at such an end instant gets its own zero-length piece
-    cuts = sorted({c for c in change_times if lo <= c <= hi and c != t})
-    if not cuts:
-        return STABLE
     now = value_at(t)
-    edges = [lo, *(c for c in cuts if lo < c < hi), hi]
-    pieces = [(a, z, value_at((a + z) / 2)) for a, z in zip(edges, edges[1:], strict=False)]
-    if cuts[0] == lo:
-        pieces.insert(0, (lo, lo, value_at(lo)))
-    if cuts[-1] == hi:
-        pieces.append((hi, hi, value_at(hi)))
+    cuts = sorted({c for c in change_times if lo < c < hi and c != t})
+    edges = [lo, *cuts, hi]
+    # both ends of the closed interval get their own zero-length piece: a change exactly at
+    # t − u or t + u is decided by the value there, not by how a root was rounded
+    pieces = [(lo, lo, value_at(lo)),
+              *((a, z, value_at((a + z) / 2)) for a, z in zip(edges, edges[1:], strict=False)),
+              (hi, hi, value_at(hi))]
     before = [z for a, z, v in pieces if z <= t and v != now]
     after = [a for a, z, v in pieces if a >= t and v != now]
     if not before and not after:
