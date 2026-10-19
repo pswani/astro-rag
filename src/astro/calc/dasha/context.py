@@ -45,13 +45,16 @@ class DashaContext:
             subj = f"dasha:vimshottari:{period.level}"
             lord = period.lord
             facts.append(ctx.fact("period_lord", subj, lord))
-            lord_houses = [f.subject for f in rel.facts
-                           if f.kind == "lord_of" and f.frame == "lagna" and f.value == lord]
-            if any(f.kind == "lord_of" and f.frame == "lagna" and f.value is None
-                   for f in rel.facts):
+            lordships = [f for f in rel.facts if f.kind == "lord_of" and f.frame == "lagna"]
+            if any(f.value is None for f in lordships):
                 facts.append(ctx.unknown("lord_houses", subj))
             else:
-                facts.append(ctx.fact("lord_houses", subj, tuple(lord_houses)))
+                # which houses a graha rules moves with the Lagna sign
+                a = Assessment.combine(*(Assessment(f.sensitivity, f.margin_minutes)
+                                         for f in lordships))
+                facts.append(ctx.fact("lord_houses", subj,
+                                      tuple(f.subject for f in lordships if f.value == lord),
+                                      sensitivity=a.sensitivity, margins=a.margins))
             refs = [f.id for r in others for f in r.facts
                     if f.subject == lord and f.kind in LORD_FACT_KINDS]
             refs += [r.id for res in (deps.get_one("aspects"), rel) for r in res.relations

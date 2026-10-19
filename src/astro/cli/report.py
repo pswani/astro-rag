@@ -14,8 +14,8 @@ from astro.calc.engine import Engine
 from astro.calc.ephemeris.swiss import SwissEphemeris
 from astro.calc.model import FeatureResult
 from astro.calc.profile import CalcProfile, load_profile
-from astro.calc.refdata import YamlReferenceData
-from astro.methods.base import MethodProfile, MethodRegistry
+from astro.calc.refdata import load_refdata
+from astro.methods.base import MethodProfile, load_registry
 from astro.normalize.birth import BirthInput, Normalization, chart_id, load_zone, normalize_birth
 from astro.normalize.gazetteer import Place
 from astro.resources import astro_home, ephemeris_dir
@@ -94,8 +94,8 @@ def build(req: ChartRequest) -> ChartReport:
     home = astro_home()
     # a chart is a calculation, so a draft method's features may be used (design §7.10);
     # the report states the method's status
-    method, adapter = MethodRegistry(home / "profiles" / "method").get(req.method,
-                                                                       purpose="calculation")
+    method, adapter = load_registry(home / "profiles" / "method").get(req.method,
+                                                                      purpose="calculation")
     profile_id = req.profile_id or method.default_calc_profile
     if profile_id not in method.calc_profiles:
         raise CalcError(Reason.UNSUPPORTED_PROFILE,
@@ -120,7 +120,7 @@ def build(req: ChartRequest) -> ChartReport:
     report.local_tz = load_zone(zone) if zone else timezone(
         timedelta(minutes=norm.provenance["offset"]["minutes"]))
     eph = SwissEphemeris(ephemeris_dir(home), profile)
-    refdata = YamlReferenceData(home / "ontology")
+    refdata = load_refdata(home / "ontology")
     report.chart_id = chart_id(_chart_key(), norm.birth, profile.id)
     inputs = {"native_gender": req.native_gender} if req.native_gender else {}
     ctx = ChartContext(report.chart_id, norm.birth, profile, eph, refdata, inputs)

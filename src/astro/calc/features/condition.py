@@ -32,10 +32,10 @@ from astro.calc.features.common import (
     subject,
 )
 from astro.calc.model import ChartFact, FeatureResult, Relation
+from astro.calc.profile import COMBUSTIBLE
 from astro.calc.refdata import GRAHAS_7
 from astro.calc.sensitivity import Assessment
 
-COMBUSTIBLE = ("moon", "mars", "mercury", "jupiter", "venus", "saturn")
 JUNCTIONS = (0.0, 120.0, 240.0)
 
 
@@ -108,8 +108,8 @@ class Condition:
                 facts.append(ctx.fact("combust", s, False))
                 continue
             retro = pos.fact("retrograde", s).value
-            orb = prof.combustion.orbs.get(f"{g}_retro" if retro else g,
-                                           prof.combustion.orbs[g])
+            orbs = prof.combustion.orbs  # complete: validated when the profile loads
+            orb = orbs[f"{g}_retro"] if retro and f"{g}_retro" in orbs else orbs[g]
             a = assess_angle(ctx, g, "sun", [orb, 360.0 - orb])
             facts.append(ctx.fact("sun_distance", s, dist, unit="deg"))
             facts.append(ctx.fact("combust", s, dist <= orb, sensitivity=a.sensitivity,

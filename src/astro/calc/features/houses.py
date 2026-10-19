@@ -10,11 +10,12 @@
 
 from __future__ import annotations
 
+from functools import cache
 from typing import Any
 
 from astro.calc.context import ChartContext
 from astro.calc.core.angles import houses_apart, norm360
-from astro.calc.core.status import CalcError, Status
+from astro.calc.core.status import CalcError, Reason, Status
 from astro.calc.core.timescale import MINUTE
 from astro.calc.engine import Deps, FeatureRequest
 from astro.calc.ephemeris.port import BODIES
@@ -55,6 +56,9 @@ class Houses:
         ref = ctx.refdata
         facts: list[ChartFact] = []
         unavailable: dict[str, str] = {}
+        b = ctx.birth
+        # cusps depend only on the instant: one calculation per grid sample for all bodies
+        cusps_at = cache(lambda t: ctx.ephemeris.cusps(t, b.latitude, b.longitude, ctx.profile))
         for frame in frames:
             ref_subj = frame_reference(frame)
             ref_sign_f = pos.fact("sign", ref_subj)
@@ -78,7 +82,7 @@ class Houses:
                 sign_f = pos.fact("sign", subj)
                 if use_cusps:
                     try:
-                        house, a = self._cusp_house(ctx, body)
+                        house, a = self._cusp_house(ctx, body, cusps_at)
                     except CalcError as e:  # cusps undefined: only this frame is unknown
                         frame_facts = [ctx.unknown("house", subject(bd), frame=frame)
                                        for bd in BODIES if subject(bd) != ref_subj]
@@ -90,19 +94,22 @@ class Houses:
                 frame_facts.append(ctx.fact("house", subj, house, frame=frame,
                                             sensitivity=a.sensitivity, margins=a.margins))
             facts += frame_facts
+        # partially unsupported: the other frames stand, the reason is explicit (§6.2.5, §7.10)
         return FeatureResult(feature_id=self.id, status=Status.OK, facts=tuple(facts),
+                             reason=Reason.UNSUPPORTED_FEATURE if unavailable else None,
+                             detail="; ".join(f"{k}: {v}" for k, v in unavailable.items()),
                              provenance={"frames": frames,
                                          "lagna_system": ctx.profile.house_system,
                                          "other_frames_counting": "whole_sign",
                                          **({"unavailable": unavailable} if unavailable else {})})
 
     @staticmethod
-    def _cusp_house(ctx: ChartContext, body: str) -> tuple[int, Assessment]:
+    def _cusp_house(ctx: ChartContext, body: str, cusps_at) -> tuple[int, Assessment]:
         b = ctx.birth
 
         def house_at(t: float) -> int:
-            cusps = ctx.ephemeris.cusps(t, b.latitude, b.longitude, ctx.profile)
-            return sripati_house(ctx.ephemeris.body(body, t, ctx.profile).longitude, cusps)
+            return sripati_house(ctx.ephemeris.body(body, t, ctx.profile).longitude,
+                                 cusps_at(t))
 
         house = house_at(b.jd_ut)
         if b.u_days <= 0:

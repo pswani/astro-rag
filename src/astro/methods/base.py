@@ -14,6 +14,7 @@ features and default profile; a `withdrawn` method is never used.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import cache
 from importlib.metadata import entry_points
 from pathlib import Path
 from typing import Any, Literal, Protocol
@@ -77,15 +78,22 @@ class MethodRegistry:
         self.adapters: dict[str, MethodAdapter] = {
             a.method_id: a for a in (ParashariAdapter(), BnnAdapter())}
         self.broken: dict[str, str] = {}
+        builtins = set(self.adapters)
         for ep in entry_points(group="astro.methods"):
-            if ep.name in self.adapters:
+            if ep.name in builtins:
                 continue  # built-ins are registered above, whatever the install metadata says
             try:
                 adapter = ep.load()()
+                method_id = adapter.method_id
+                if not isinstance(method_id, str):
+                    raise TypeError("method_id must be a string")
             except Exception as e:  # noqa: BLE001 - one bad plugin must not block the others
                 self.broken[ep.name] = f"{type(e).__name__}: {e}"
                 continue
-            self.adapters[adapter.method_id] = adapter
+            if method_id in self.adapters:  # a plugin never replaces a built-in or another
+                self.broken[ep.name] = f"method {method_id!r} is already registered"
+                continue
+            self.adapters[method_id] = adapter
 
     def get(self, method_id: str, *, purpose: Literal["reading", "calculation"] = "reading"
             ) -> tuple[MethodProfile, MethodAdapter]:
@@ -101,3 +109,9 @@ class MethodRegistry:
             raise CalcError(Reason.UNSUPPORTED_METHOD,
                             f"method {method_id} is {prof.status}: not available for {purpose}")
         return prof, adapter
+
+
+@cache
+def load_registry(profile_dir: Path) -> MethodRegistry:
+    """Method profiles and adapters for `profile_dir`, discovered once per process."""
+    return MethodRegistry(Path(profile_dir))

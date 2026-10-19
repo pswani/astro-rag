@@ -7,6 +7,7 @@ the passage index. `YamlReferenceData` loads `ontology/*.yaml` and checks refere
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
 from typing import Literal, Protocol
 
@@ -264,3 +265,9 @@ class YamlReferenceData:
     def native_karaka(self, scheme: str, gender: str) -> str | None:
         g = self._karakas[scheme].get("native", {}).get(gender)
         return "graha:" + g if g else None
+
+
+@cache
+def load_refdata(directory: Path) -> YamlReferenceData:
+    """The ontology for `directory`, loaded and integrity-checked once per process."""
+    return YamlReferenceData(Path(directory))

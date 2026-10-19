@@ -466,6 +466,8 @@ def notes(report: ChartReport) -> list[str]:
         if r.status.value != "ok":
             out.append(f"- {name}: {r.status.value} ({r.reason.value if r.reason else ''}) "
                        f"{r.detail[:120]}")
+        elif r.reason is not None:  # computed, but part of it is unavailable
+            out.append(f"- {name}: partly {r.reason.value}: {r.detail[:120]}")
     out.append("- * = changes within the birth-time uncertainty; ? = unknown")
     return out
 

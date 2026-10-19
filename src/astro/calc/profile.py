@@ -94,9 +94,23 @@ class Dignity(_Strict):
     nodes: Literal["not_modelled"] = "not_modelled"   # node dignities are disputed
 
 
+COMBUSTIBLE = ("moon", "mars", "mercury", "jupiter", "venus", "saturn")
+
+
 class Combustion(_Strict):
     measure: Literal["longitude"] = "longitude"       # G-C8
     orbs: dict[str, float]                            # planet or planet_retro → degrees
+
+    @model_validator(mode="after")
+    def _complete(self) -> Combustion:
+        missing = [g for g in COMBUSTIBLE if g not in self.orbs]
+        allowed = {*COMBUSTIBLE, *(f"{g}_retro" for g in COMBUSTIBLE)}
+        unknown = sorted(set(self.orbs) - allowed)
+        if missing or unknown:
+            raise ValueError(f"combustion orbs: missing {missing}, unknown {unknown}")
+        if any(not 0 < v <= 30 for v in self.orbs.values()):
+            raise ValueError("combustion orbs must be in (0, 30] degrees")
+        return self
 
 
 class GrahaYuddha(_Strict):

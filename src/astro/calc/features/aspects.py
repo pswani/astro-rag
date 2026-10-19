@@ -42,47 +42,68 @@ class Aspects:
         sign_a = {s: assessment_of(pos.fact("sign", s)) for s in sign}
         lagna_f = pos.fact("sign", LAGNA)
         rels: list[Relation] = []
-        received: dict[str, list[tuple[str, Assessment]]] = {s: [] for s in sign}
-        house_received: dict[int, list[tuple[str, Assessment]]] = {n: [] for n in range(1, 13)}
         facts: list[ChartFact] = []
 
-        for g in BODIES:
-            s = subject(g)
-            offsets = aspect_offsets(ctx, g)
-            targets = [(sign[s] + off - 1) % 12 for off in offsets]
+        # Signs a body can occupy inside [t − u, t + u]: a sensitive sign can move one step
+        # either way (the Moon moves under 14° a day). Facts change only if some reachable
+        # combination changes them (CALC-7).
+        def reach(a: Assessment, s: int) -> tuple[int, ...]:
+            return (s,) if a.sensitivity == "stable" else ((s - 1) % 12, s, (s + 1) % 12)
+
+        offsets = {subject(g): aspect_offsets(ctx, g) for g in BODIES}
+
+        def hits(src: str, src_sign: int, target_sign: int) -> bool:
+            return houses_apart(src_sign, target_sign) in offsets[src]
+
+        def changes(src: str, target_sign: int, target_reach: tuple[int, ...]) -> bool:
+            now = hits(src, sign[src], target_sign)
+            return any(hits(src, a, b) != now for a in reach(sign_a[src], sign[src])
+                       for b in target_reach)
+
+        for s in sign:
+            targets = [(sign[s] + off - 1) % 12 for off in offsets[s]]
             facts.append(ctx.fact("aspects_signs", s, tuple(ref.rashi_id(t) for t in targets),
                                   frame="rashi", sensitivity=sign_a[s].sensitivity,
                                   margins=sign_a[s].margins))
-            for off, t in zip(offsets, targets, strict=True):
+            for off, t in zip(offsets[s], targets, strict=True):
                 rels.append(self._rel(ctx, "aspect", s, ref.rashi_id(t), off,
                                       sign_a[s].sensitivity))
                 for other, os_ in sign.items():
                     if other != s and os_ == t:
                         a = Assessment.combine(sign_a[s], sign_a[other])
                         rels.append(self._rel(ctx, "aspect", s, other, off, a.sensitivity))
-                        received[other].append((s, a))
-                if lagna_f.value is not None:
-                    n = houses_apart(ref.rashi_index(lagna_f.value), t)
-                    house_received[n].append((s, Assessment.combine(
-                        sign_a[s], assessment_of(lagna_f))))
 
-        for s, items in received.items():
-            a = Assessment.combine(sign_a[s], *(x for _, x in items))
-            facts.append(ctx.fact("aspected_by", s, tuple(src for src, _ in items),
-                                  frame="rashi", sensitivity=a.sensitivity, margins=a.margins))
-        for n, items in house_received.items():
+        for s in sign:
+            by = tuple(x for x in sign if x != s and hits(x, sign[x], sign[s]))
+            moving = [Assessment.combine(sign_a[x], sign_a[s]) for x in sign
+                      if x != s and changes(x, sign[s], reach(sign_a[s], sign[s]))]
+            a = Assessment.combine(Assessment("stable", (None, None)), *moving)
+            facts.append(ctx.fact("aspected_by", s, by, frame="rashi",
+                                  sensitivity=a.sensitivity, margins=a.margins))
+
+        # house aspects count whole signs from the Lagna sign; under a cusp-based house system
+        # that is a different frame from the Houses feature's "lagna" (REL-3)
+        house_frame = "lagna" if prof.house_system == "whole_sign" else "lagna_rashi"
+        for n in range(1, 13):
             if lagna_f.value is None:
-                facts.append(ctx.unknown("aspected_by", f"bhava:{n}", frame="lagna"))
+                facts.append(ctx.unknown("aspected_by", f"bhava:{n}", frame=house_frame))
                 continue
-            a = Assessment.combine(assessment_of(lagna_f), *(x for _, x in items))
-            facts.append(ctx.fact("aspected_by", f"bhava:{n}", tuple(src for src, _ in items),
-                                  frame="lagna", sensitivity=a.sensitivity, margins=a.margins))
+            la = assessment_of(lagna_f)
+            target = (ref.rashi_index(lagna_f.value) + n - 1) % 12
+            target_reach = tuple((x + n - 1) % 12
+                                 for x in reach(la, ref.rashi_index(lagna_f.value)))
+            by = tuple(x for x in sign if hits(x, sign[x], target))
+            moving = [Assessment.combine(sign_a[x], la) for x in sign
+                      if changes(x, target, target_reach)]
+            a = Assessment.combine(Assessment("stable", (None, None)), *moving)
+            facts.append(ctx.fact("aspected_by", f"bhava:{n}", by, frame=house_frame,
+                                  sensitivity=a.sensitivity, margins=a.margins))
 
         # conjunctions
         conj = prof.conjunction
         lon = {s: pos.fact("longitude", s).value for s in sign}
         partners: dict[str, list[str]] = {s: [] for s in sign}
-        pair_sens: dict[tuple[str, str], Assessment] = {}
+        moving_pairs: dict[str, list[Assessment]] = {s: [] for s in sign}
         subjects = list(sign)
         for i, a in enumerate(subjects):
             for b in subjects[i + 1:]:
@@ -90,32 +111,35 @@ class Aspects:
                     continue
                 if conj.mode == "same_sign":
                     hit = sign[a] == sign[b]
-                else:
-                    hit = abs(signed_diff(lon[a], lon[b])) <= conj.orb_deg
-                if conj.mode == "same_sign":
-                    pair_a = Assessment.combine(sign_a[a], sign_a[b])
+                    varies = any((x == y) != hit for x in reach(sign_a[a], sign[a])
+                                 for y in reach(sign_a[b], sign[b]))
+                    pair_a = Assessment.combine(sign_a[a], sign_a[b]) if varies else \
+                        Assessment("stable", (None, None))
                 else:  # the conjunction appears or ends where the angle crosses ±orb
+                    hit = abs(signed_diff(lon[a], lon[b])) <= conj.orb_deg
                     pair_a = assess_angle(ctx, a.split(":")[1], b.split(":")[1],
                                           [conj.orb_deg, 360.0 - conj.orb_deg])
-                pair_sens[(a, b)] = pair_sens[(b, a)] = pair_a
+                if pair_a.sensitivity != "stable":
+                    moving_pairs[a].append(pair_a)
+                    moving_pairs[b].append(pair_a)
                 if hit:
-                    sens = pair_a.sensitivity
                     rels.append(Relation(
                         id=f"{ctx.chart_id}/conjunction/{a}/{b}", kind="conjunction", source=a,
                         target=b, system=conj.mode, direction="mutual",
                         value=abs(signed_diff(lon[a], lon[b])), profile_id=prof.id,
-                        sensitivity=sens))
+                        sensitivity=pair_a.sensitivity))
                     partners[a].append(b)
                     partners[b].append(a)
         for s, ps in partners.items():
-            # any pair could start or stop being conjunct, not only the current partners
-            a = Assessment.combine(sign_a[s], *(v for (x, _), v in pair_sens.items() if x == s))
+            a = Assessment.combine(Assessment("stable", (None, None)), *moving_pairs[s])
             facts.append(ctx.fact("conjunct_with", s, tuple(ps), frame="rashi",
                                   sensitivity=a.sensitivity, margins=a.margins))
         return FeatureResult(feature_id=self.id, status=Status.OK, facts=tuple(facts),
                              relations=tuple(rels),
                              provenance={"aspects": prof.aspects.model_dump(),
-                                         "conjunction": prof.conjunction.model_dump()})
+                                         "conjunction": prof.conjunction.model_dump(),
+                                         "house_aspects": {"frame": house_frame,
+                                                           "counting": "whole_sign"}})
 
     @staticmethod
     def _rel(ctx: ChartContext, kind: str, source: str, target: str, offset: int,

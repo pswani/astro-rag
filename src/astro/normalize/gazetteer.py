@@ -24,6 +24,13 @@ from typing import Literal, Protocol
 
 ATTRIBUTION = "Place data: GeoNames (geonames.org), CC BY 4.0, via the reverse_geocode package"
 
+# everyday names for countries whose table name or ISO code people rarely type
+COUNTRY_ALIASES = {"uk": "GB", "great britain": "GB", "britain": "GB", "usa": "US",
+                   "united states of america": "US", "america": "US", "uae": "AE",
+                   "south korea": "KR", "north korea": "KP", "russia": "RU", "iran": "IR",
+                   "vietnam": "VN", "laos": "LA", "syria": "SY", "bolivia": "BO",
+                   "venezuela": "VE", "tanzania": "TZ", "czechia": "CZ", "holland": "NL"}
+
 
 @dataclass(frozen=True)
 class Place:
@@ -99,6 +106,7 @@ class CityTable:
             self._by_name.setdefault(fold(p.name), []).append(p)
         self._country_keys = {fold(code): code for code in self._countries}
         self._country_keys.update({fold(name): code for code, name in self._countries.items()})
+        self._country_keys.update(COUNTRY_ALIASES)
 
     def _country(self, text: str) -> str | None:
         return self._country_keys.get(fold(text))

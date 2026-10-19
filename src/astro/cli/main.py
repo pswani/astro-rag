@@ -170,7 +170,7 @@ def _varga_list(text: str, known: tuple[str, ...]) -> tuple[str, ...]:
 
 
 def cmd_chart(args, out, err) -> int:
-    from astro.calc.refdata import YamlReferenceData
+    from astro.calc.refdata import load_refdata
     from astro.cli.render import render
     from astro.cli.report import ChartRequest, build
 
@@ -184,7 +184,7 @@ def cmd_chart(args, out, err) -> int:
     if method not in methods:
         err(f"unknown method {method!r}; available: {', '.join(methods)}")
         return EXIT_NEEDS_INPUT
-    known_vargas = YamlReferenceData(home / "ontology").varga_ids()
+    known_vargas = load_refdata(home / "ontology").varga_ids()
     try:
         vargas = _varga_list(args.vargas, known_vargas)
         table = vargas if args.varga_table is None else _varga_list(args.varga_table,
