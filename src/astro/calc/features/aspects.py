@@ -138,7 +138,8 @@ class Aspects:
         for p in sorted(now_pairs, key=sorted):
             a, b = sorted(p, key=bodies.index)
             pa = (Assessment.combine(sign_a[a], sign_a[b]) if conj.mode == "same_sign"
-                  else assess_angle(ctx, names[a], names[b], list(orb_targets)))
+                  else assess_angle(ctx, names[a], names[b], orb_targets,
+                                    lambda x: min(x, 360.0 - x) <= conj.orb_deg))
             rels.append(Relation(
                 id=f"{ctx.chart_id}/conjunction/{a}/{b}", kind="conjunction", source=a,
                 target=b, system=conj.mode, direction="mutual",

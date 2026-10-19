@@ -14,13 +14,12 @@ root finder's tolerance; the instants only make the margins exact.
 
 from __future__ import annotations
 
-from bisect import bisect_right
+from collections import OrderedDict
 from collections.abc import Callable, Hashable, Iterable
 
 from astro.calc.context import ChartContext
 from astro.calc.core.angles import (
     PADA_SPAN,
-    SIGN_SPAN,
     nakshatra_index,
     norm360,
     pada_count,
@@ -33,7 +32,6 @@ from astro.calc.sensitivity import STABLE, UNKNOWN, Assessment
 from astro.calc.solver import Crossing, crossings, find_stations
 
 LAGNA = "lagna"
-ZODIAC_MULTIPLES = {"pada": 1, "nakshatra": 4, "sign": 9}  # boundaries, in pada spans
 _PADAS = round(360.0 / PADA_SPAN)
 
 
@@ -65,21 +63,18 @@ def _memo(ctx: ChartContext, key: tuple, compute: Callable[[], object]):
     return ctx.memo[key]
 
 
-_STATES_MAX = 50_000  # one-off root-finder probes are not worth keeping forever
-
-
-def _states(ctx: ChartContext) -> dict:
-    states = ctx.memo.setdefault("states", {})
-    if len(states) > _STATES_MAX:
-        states.clear()
-    return states
+_STATES_MAX = 50_000  # least recently used states go first; hot instants stay
 
 
 def _state(ctx: ChartContext, key: tuple, compute: Callable[[], object]):
-    states = _states(ctx)
-    if key not in states:
-        states[key] = compute()
-    return states[key]
+    states: OrderedDict = ctx.memo.setdefault("states", OrderedDict())
+    if key in states:
+        states.move_to_end(key)
+        return states[key]
+    value = states[key] = compute()
+    if len(states) > _STATES_MAX:
+        states.popitem(last=False)
+    return value
 
 
 def state_at(ctx: ChartContext, body: str, t: float) -> BodyState:
@@ -154,7 +149,7 @@ def _zodiac_times(ctx: ChartContext, body: str, multiple: int) -> tuple[float, .
 
 
 def sign_changes(ctx: ChartContext, body: str) -> tuple[float, ...]:
-    return _zodiac_times(ctx, body, ZODIAC_MULTIPLES["sign"])
+    return _zodiac_times(ctx, body, 9)  # a sign is 9 padas
 
 
 def width_changes(ctx: ChartContext, body: str, width: float) -> tuple[float, ...]:
@@ -171,7 +166,7 @@ def width_changes(ctx: ChartContext, body: str, width: float) -> tuple[float, ..
 def target_changes(ctx: ChartContext, body: str,
                    targets: Iterable[float]) -> tuple[float, ...]:
     """Crossings of any of `targets` (absolute longitudes)."""
-    targets = tuple(sorted(targets))
+    targets = tuple(sorted({round(norm360(x), 9) % 360.0 for x in targets}))
 
     def compute():
         w = _window(ctx)
@@ -244,58 +239,44 @@ def cusp_changes(ctx: ChartContext, body: str) -> tuple[float, ...]:
 
 
 # -- assessments ---------------------------------------------------------------------------
+#
+# Each assessment evaluates the fact's own rule (a function of longitude, angle or state); the
+# solved instants only propose where it may change.
 
 def _unknown_lagna(ctx: ChartContext, body: str) -> bool:
     return body == LAGNA and not ctx.birth.time_known
 
 
-def _sector(sorted_targets: tuple[float, ...], x: float) -> int:
-    """Which arc between consecutive targets holds x (the arc across 0° counts once)."""
-    return bisect_right(sorted_targets, norm360(x)) % len(sorted_targets)
+ZODIAC_VALUES = {"pada": (1, pada_count), "nakshatra": (4, nakshatra_index),
+                 "sign": (9, sign_index)}
 
 
 def assess_zodiac(ctx: ChartContext, body: str) -> dict[str, Assessment]:
     """Sign, nakshatra and pada sensitivity of `body` from one crossing search."""
     if _unknown_lagna(ctx, body):
-        return {k: UNKNOWN for k in ZODIAC_MULTIPLES}
-    times = tuple(c.jd for c in zodiac_crossings(ctx, body))
-    value = {"pada": pada_count, "nakshatra": nakshatra_index, "sign": sign_index}
-    return {k: piecewise(ctx, _zodiac_times(ctx, body, m) if k != "pada" else times,
-                         lambda t, f=value[k]: f(lon_at(ctx, body, t)))
-            for k, m in ZODIAC_MULTIPLES.items()}
+        return {k: UNKNOWN for k in ZODIAC_VALUES}
+    return {k: assess_lon(ctx, body, _zodiac_times(ctx, body, m), f)
+            for k, (m, f) in ZODIAC_VALUES.items()}
 
 
-def assess_width(ctx: ChartContext, body: str, width: float) -> Assessment:
-    """Sensitivity of a fact of `body` with boundaries every `width` degrees."""
+def assess_lon(ctx: ChartContext, body: str, change_times: Iterable[float],
+               rule: Callable[[float], Hashable]) -> Assessment:
+    """Sensitivity of a fact `rule(longitude of body)` that can change only at `change_times`
+    (from `sign_changes`, `width_changes` or `target_changes`)."""
     if _unknown_lagna(ctx, body):
         return UNKNOWN
-    if width == SIGN_SPAN:
-        times = sign_changes(ctx, body)
-    elif width == PADA_SPAN:
-        times = _zodiac_times(ctx, body, 1)
-    else:
-        times = width_changes(ctx, body, width)
-    n = round(360.0 / width)
-    return piecewise(ctx, times, lambda t: min(int(norm360(lon_at(ctx, body, t)) * n // 360),
-                                               n - 1))
+    return piecewise(ctx, change_times, lambda t: rule(lon_at(ctx, body, t)))
 
 
-def assess_boundaries(ctx: ChartContext, body: str, targets: Iterable[float]) -> Assessment:
-    """Sensitivity of a fact of `body` that changes at the given absolute longitudes."""
-    if _unknown_lagna(ctx, body):
-        return UNKNOWN
-    ts = tuple(sorted({norm360(x) for x in targets}))
+def assess_angle(ctx: ChartContext, a: str, b: str, targets: Iterable[float],
+                 rule: Callable[[float], Hashable]) -> Assessment:
+    """Sensitivity of a fact `rule(angle a − b)` that can change only where the angle crosses
+    `targets`."""
+    ts = tuple(targets)
     if not ts:
         return STABLE
-    return piecewise(ctx, target_changes(ctx, body, ts),
-                     lambda t: _sector(ts, lon_at(ctx, body, t)))
-
-
-def assess_angle(ctx: ChartContext, a: str, b: str, targets: Iterable[float]) -> Assessment:
-    """Sensitivity of a fact that changes when the angle a − b crosses any of `targets`."""
-    ts = tuple(sorted({norm360(x) for x in targets}))
     return piecewise(ctx, angle_changes(ctx, a, b, ts),
-                     lambda t: _sector(ts, lon_at(ctx, a, t) - lon_at(ctx, b, t)))
+                     lambda t: rule(norm360(lon_at(ctx, a, t) - lon_at(ctx, b, t))))
 
 
 def assess_station(ctx: ChartContext, body: Body) -> Assessment:
@@ -313,13 +294,15 @@ def piecewise(ctx: ChartContext, change_times: Iterable[float],
     t = ctx.birth.jd_ut
     lo, hi = w
     now = value_at(t)
-    cuts = sorted({c for c in change_times if lo < c < hi and c != t})
-    edges = [lo, *cuts, hi]
+    cuts = sorted({c for c in change_times if lo < c < hi})
+    # t is an edge too, so a change the root finder places a hair on the wrong side of t
+    # still shows up in the piece next to t (margin ~0)
+    edges = sorted({lo, hi, t, *cuts})
+    interior = [] if not cuts else [
+        (a, z, value_at((a + z) / 2)) for a, z in zip(edges, edges[1:], strict=False)]
     # both ends of the closed interval get their own zero-length piece: a change exactly at
     # t − u or t + u is decided by the value there, not by how a root was rounded
-    pieces = [(lo, lo, value_at(lo)),
-              *((a, z, value_at((a + z) / 2)) for a, z in zip(edges, edges[1:], strict=False)),
-              (hi, hi, value_at(hi))]
+    pieces = [(lo, lo, value_at(lo)), *interior, (hi, hi, value_at(hi))]
     before = [z for a, z, v in pieces if z <= t and v != now]
     after = [a for a, z, v in pieces if a >= t and v != now]
     if not before and not after:

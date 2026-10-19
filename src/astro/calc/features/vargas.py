@@ -14,11 +14,12 @@ from astro.calc.core.angles import deg_in_sign, is_odd_sign, modality, sign_inde
 from astro.calc.core.status import Status
 from astro.calc.engine import Deps, FeatureRequest
 from astro.calc.features.common import (
-    assess_boundaries,
-    assess_width,
+    assess_lon,
     assessment_of,
     points,
     subject,
+    target_changes,
+    width_changes,
 )
 from astro.calc.model import ChartFact, FeatureResult
 from astro.calc.refdata import VargaSpec
@@ -94,12 +95,10 @@ class Vargas:
 
     @staticmethod
     def _assess(ctx: ChartContext, body: str, pos: FeatureResult, spec: VargaSpec) -> Assessment:
-        if spec.table is not None:
-            return assess_boundaries(ctx, body, spec.boundaries())
         # D1 boundaries are signs and D9 boundaries are padas: reuse the positions assessment
-        kind = {1: "sign", 9: "pada"}.get(spec.divisions)
+        kind = {1: "sign", 9: "pada"}.get(spec.divisions) if spec.table is None else None
         if kind is not None:
             return assessment_of(pos.fact(kind, subject(body)))
-        return assess_width(ctx, body, 30.0 / spec.divisions)
-
-
+        times = (target_changes(ctx, body, spec.boundaries()) if spec.table is not None
+                 else width_changes(ctx, body, 30.0 / spec.divisions))
+        return assess_lon(ctx, body, times, lambda lon: varga_sign(lon, spec))

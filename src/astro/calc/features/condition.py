@@ -20,13 +20,13 @@ from __future__ import annotations
 from typing import Any
 
 from astro.calc.context import ChartContext
-from astro.calc.core.angles import deg_in_sign, norm360, sign_index, signed_diff
+from astro.calc.core.angles import deg_in_sign, sign_index, signed_diff
 from astro.calc.core.status import Status
 from astro.calc.engine import Deps, FeatureRequest
 from astro.calc.ephemeris.port import BODIES
 from astro.calc.features.common import (
     angle_changes,
-    assess_boundaries,
+    assess_lon,
     latitude_crossings,
     lon_at,
     piecewise,
@@ -110,8 +110,7 @@ class Condition:
             if g not in GRAHAS_7:
                 facts.append(ctx.unknown("dignity", s))
                 continue
-            changes = [*sign_changes_all,
-                       *target_changes(ctx, g, tuple(dignity_boundaries(ctx, s)))]
+            changes = [*sign_changes_all, *target_changes(ctx, g, dignity_boundaries(ctx, s))]
             a = piecewise(ctx, changes, lambda t, g=g: dignity_at(g, t))
             facts.append(ctx.fact("dignity", s, f"dignity:{dignity_at(g, t0)}",
                                   sensitivity=a.sensitivity, margins=a.margins))
@@ -187,20 +186,25 @@ class Condition:
 
         # gandanta and rashi sandhi (bodies and the Lagna)
         g_arc, s_arc = prof.gandanta.arc_deg, prof.sandhi.arc_deg
+
+        def is_gandanta(x: float) -> bool:
+            return min(abs(signed_diff(x, j)) for j in JUNCTIONS) < g_arc
+
+        def is_sandhi(x: float) -> bool:
+            return abs(signed_diff(x, round(x / 30.0) * 30.0)) < s_arc
         for p in points(ctx):
             s = subject(p)
             if lon[s] is None:
                 facts += [ctx.unknown("gandanta", s), ctx.unknown("rashi_sandhi", s)]
                 continue
-            near_j = min(abs(signed_diff(lon[s], j)) for j in JUNCTIONS)
-            near_b = abs(signed_diff(lon[s], round(lon[s] / 30.0) * 30.0))
-            ga = assess_boundaries(ctx, p, [norm360(j + k * g_arc) for j in JUNCTIONS
-                                       for k in (-1, 1)])
-            sa = assess_boundaries(ctx, p, [norm360(k * 30.0 + d * s_arc) for k in range(12)
-                                       for d in (-1, 1)])
-            facts.append(ctx.fact("gandanta", s, near_j < g_arc, sensitivity=ga.sensitivity,
+            # the facts' own rules decide; the arc edges only propose where they may change
+            ga = assess_lon(ctx, p, target_changes(
+                ctx, p, [j + k * g_arc for j in JUNCTIONS for k in (-1, 1)]), is_gandanta)
+            sa = assess_lon(ctx, p, target_changes(
+                ctx, p, [k * 30.0 + d * s_arc for k in range(12) for d in (-1, 1)]), is_sandhi)
+            facts.append(ctx.fact("gandanta", s, is_gandanta(lon[s]), sensitivity=ga.sensitivity,
                                   margins=ga.margins))
-            facts.append(ctx.fact("rashi_sandhi", s, near_b < s_arc,
+            facts.append(ctx.fact("rashi_sandhi", s, is_sandhi(lon[s]),
                                   sensitivity=sa.sensitivity, margins=sa.margins))
         return FeatureResult(feature_id=self.id, status=Status.OK, facts=tuple(facts),
                              relations=tuple(rels),
