@@ -59,15 +59,15 @@ Undecided conventions (calc-review §5, decisions 2–4) are implemented as **pr
 - [x] B5.5 Varga engine (data-driven spec) + D1/D9/D10; vargottama (VAR-1)
 - [x] B5.6 Panchanga: tithi + paksha, nakshatra, nitya yoga, karana with start/end; vara by sunrise; `no_sunrise` (PAN-1, PAN-2)
 - [x] B5.7 Vimshottari: birth balance, MD/AD/PD tree (SD optional), `active_chain`, `periods_in`, sandhi flags (DAS-1, DAS-2, DAS-4)
-- [!] B5.8 Condition: dignity, combustion, graha yuddha, gandanta, sandhi — waits for decision 3 (G-C5…G-C7)
-- [!] B5.9 Aspects and conjunctions — waits for decision 4 (G-R1)
+- [x] B5.8 Condition: dignity, combustion, graha yuddha, gandanta, sandhi — built as provisional profile options (D3)
+- [x] B5.9 Aspects and conjunctions — built as provisional profile options (D4)
 
 ## B6 Later-phase pure features
 
 - [x] B6.1 Transit positions at the as-of date relative to the natal Lagna, Moon and planets (TRN-1)
 - [x] B6.2 Event search: sign/nakshatra/pada ingresses, stations, conjunctions with natal points, returns; all loop crossings (TRN-2)
 - [x] B6.3 Named states as intervals: Sade Sati with phase, Ashtama and Kantaka Shani, Jupiter from the Moon (TRN-3 subset)
-- [!] B6.3b Jupiter–Saturn double transit and Rahu–Ketu axis over natal points — wait for decision 4 (aspect system, G-R1)
+- [x] B6.3b Jupiter–Saturn double transit and Rahu–Ketu axis over natal points (D5)
 - [x] B6.4 Eclipses with natal contact within an orb (TRN-5)
 - [x] B6.5 Birth-time sensitivity: Lagna sign/nakshatra, Moon nakshatra/pada, house placements (whole-sign), D9/D10 Lagna, dasha boundaries (CALC-7) — built into each feature; Sripati placements use a 2-min Lagna grid (margins ±1 step, G-C9)
 - [x] B6.6 BNN relations: trines, 2nd, 12th, 7th from each graha, exchanges, conjunction by sign, retro-in-previous-sign variant; BNN karaka roles (SCH-BNN-1, SCH-BNN-2) — nodes excluded from the retro variant, recorded in provenance for the reviewer
@@ -94,19 +94,31 @@ Undecided conventions (calc-review §5, decisions 2–4) are implemented as **pr
 Gaps found by tracing requirements §5.1–§5.8 and design §6–§7 against the code. Undecided conventions
 are implemented as profile options with provisional values, listed in `provisional:`.
 
-- [ ] D1 INP-1: record place provenance (source, query, label, location ID when available) in the normalization
-- [ ] D2 CALC-3: Placidus house system; `unsupported_feature` where cusps are undefined (polar latitudes)
-- [ ] D3 CALC-2: condition — dignity (with precedence and friendship basis), combustion, graha yuddha, gandanta, rashi sandhi, each with sensitivity (G-C5…G-C8)
-- [ ] D4 REL-1: Parashari graha drishti with special aspects, node aspects per profile, conjunctions (same sign or orb), aspects received (G-R1)
-- [ ] D5 TRN-3: Jupiter–Saturn double transit and Rahu–Ketu axis over natal points as intervals
-- [ ] D6 DAS-5: period-lord context for the active MD/AD/PD lords, holding fact IDs (G-D3)
-- [ ] D7 Design §7.10 / INP-5: `MethodAdapter` protocol, method profiles, registry; default method stated in output
-- [ ] D8 VAR-2: remaining Shodashvarga with one declared Parashari construction each (spec extended for steps, absolute starts, elements and tables); PyJHora oracle
-- [ ] D9 CLI: dignity and condition flags, aspects, any varga, method and provisional notes
-- [ ] D10 User guide (README)
-- [ ] D11 Review loop until clean: code review, alignment re-check, fixes with regression tests
+- [x] D1 INP-1: record place provenance (source, query, label, location ID when available) in the normalization
+- [x] D2 CALC-3: Placidus house system; `unsupported_feature` where cusps are undefined (polar latitudes)
+- [x] D3 CALC-2: condition — dignity (with precedence and friendship basis), combustion, graha yuddha, gandanta, rashi sandhi, each with sensitivity (G-C5…G-C8)
+- [x] D4 REL-1: Parashari graha drishti with special aspects, node aspects per profile, conjunctions (same sign or orb), aspects received (G-R1)
+- [x] D5 TRN-3: Jupiter–Saturn double transit and Rahu–Ketu axis over natal points as intervals
+- [x] D6 DAS-5: period-lord context for the active MD/AD/PD lords, holding fact IDs (G-D3)
+- [x] D7 Design §7.10 / INP-5: `MethodAdapter` protocol, method profiles, registry; default method stated in output
+- [x] D8 VAR-2: remaining Shodashvarga with one declared Parashari construction each (spec extended for steps, absolute starts, elements and tables); PyJHora oracle
+- [x] D9 CLI: dignity and condition flags, aspects, any varga, method and provisional notes
+- [x] D10 User guide (README): install, inputs, every report section, options, profiles, JSON, exit codes, accuracy, FAQ, privacy, glossary; every example command checked
+- [x] D11 Review loop until clean: code review, alignment re-check, fixes with regression tests — 7 rounds; round 7 found no correctness defects; traceability in [alignment.md](alignment.md)
 
 Still out of scope: functional roles (G-R2 needs a sourced table), Shadbala (G-S2), PAN-3 (G-PN2), phase-7 items.
+
+### D11 review rounds
+
+| Round | Main findings | Root-cause fix |
+|---|---|---|
+| 1 | Polar Placidus occupants empty-and-stable; multi-war outcome overwrite; orb-conjunction sensitivity; built-ins only via entry points; draft gate defeated; `--vargas` meaning changed | Unknown occupants; loser-if-any; orb crossings; built-in registration; purpose-based gate; `--varga-table` |
+| 2 | Aspect/conjunction sensitivity too lax or too strict; lordship sensitivity; incomplete orbs crash; plugin override; frame naming under cusp systems; country aliases | Reachable-sign rule; validated orbs; isolated plugins; `lagna_rashi`; aliases |
+| 3 | The reachable-sign rule assumed ±1 sign (fast Lagna); war winners and the combustion orb could flip unnoticed | **Exact piecewise sensitivity**: facts evaluated between solved change instants; ground-truth sampling test |
+| 4 | Duplicate solves; approximate cusp houses; war relations scoped too widely; cache growth | One per-chart store of change instants; exact cusp crossings; per-pair scope; versioned caches |
+| 5 | Interval ends decided by crossing direction and root rounding | Value-based ends; no search shift; shared stations; canonical angle keys |
+| 6 | Change next to t; proxies disagreeing with the facts' rules at edges | t as an edge; real rules everywhere |
+| 7 | No correctness defects; cleanups | Applied |
 
 ### C6 review findings
 
@@ -154,6 +166,7 @@ ruff check src tests scripts && lint-imports && pytest
 | Date | Change |
 |---|---|
 | 2026-10-19 | List created |
+| 2026-10-19 | D done: requirement gaps closed (CALC-2, CALC-3 Placidus, REL-1, TRN-3, DAS-5 partial, VAR-2, §7.10 adapters, INP-1 provenance); 7 review rounds; 412 tests; [alignment.md](alignment.md) |
 | 2026-10-19 | C done: `astro chart` / `astro places` / `astro ephemeris`, 28 CLI tests, 10 review findings fixed. The offline city table covers B4.5 for names in GeoNames cities1000; alternate names (e.g. Bangalore) still need the full dump |
 | 2026-10-19 | B7 done: 168 tests, clean-venv CI check, oracle extra declares PyJHora's undeclared imports (CI fails instead of skipping) |
 | 2026-10-19 | B6 done (B6.3b blocked on G-R1). Real-data fixture: Saturn crosses natal Mercury three times in 2026–27 (TRN-2 acceptance); Sade Sati phases verified on a synthetic ephemeris |

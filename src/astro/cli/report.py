@@ -84,10 +84,22 @@ class ChartReport:
         }
 
 
+class ChartKeyError(ValueError):
+    pass
+
+
 def _chart_key() -> bytes:
     """Chart IDs are keyed (design §5.3). Set ASTRO_CHART_KEY (hex) for stable IDs."""
     env = os.environ.get("ASTRO_CHART_KEY")
-    return bytes.fromhex(env) if env else secrets.token_bytes(32)
+    if not env:
+        return secrets.token_bytes(32)
+    try:
+        key = bytes.fromhex(env)
+    except ValueError as e:
+        raise ChartKeyError("ASTRO_CHART_KEY must be hexadecimal") from e
+    if len(key) < 16:
+        raise ChartKeyError("ASTRO_CHART_KEY must have at least 32 hex digits")
+    return key
 
 
 def build(req: ChartRequest) -> ChartReport:

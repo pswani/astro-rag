@@ -302,3 +302,10 @@ def test_vargas_keeps_its_meaning_and_varga_table_is_separate():
     assert code == EXIT_OK and "Navamsa (D9)" in out and "Dasamsa (D10)" not in out
     assert "Body       D9" in out  # the table defaults to the charts drawn
     assert "[draft: calculations only, no reviewed rules yet]" in out
+
+
+@pytest.mark.parametrize("key,message", [("xyz", "hexadecimal"), ("00ff", "at least 32")])
+def test_invalid_chart_key_is_a_setup_error(monkeypatch, key, message):
+    monkeypatch.setenv("ASTRO_CHART_KEY", key)
+    code, _, err = run(*PUNE)
+    assert code == 1 and message in err

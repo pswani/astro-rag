@@ -107,7 +107,7 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--profile", default=None,
                    help="calculation profile ID (default: the method's default profile)")
     c.add_argument("--native-gender", choices=["male", "female"],
-                   help="optional BNN input: Jupiter or Venus signifies the native (INP-8)")
+                   help="optional BNN input: Jupiter (male) or Venus (female) signifies the native")
     c.add_argument("--vargas", default="D1,D9,D10",
                    help="divisional charts to draw, e.g. D1,D9 (any of D1…D60)")
     c.add_argument("--varga-table", default=None,
@@ -172,7 +172,7 @@ def _varga_list(text: str, known: tuple[str, ...]) -> tuple[str, ...]:
 def cmd_chart(args, out, err) -> int:
     from astro.calc.refdata import load_refdata
     from astro.cli.render import render
-    from astro.cli.report import ChartRequest, build
+    from astro.cli.report import ChartKeyError, ChartRequest, build
 
     home = astro_home()
     if args.profile and not (home / "profiles" / "calc" / f"{args.profile}.yaml").is_file():
@@ -207,6 +207,9 @@ def cmd_chart(args, out, err) -> int:
         place_source=default_gazetteer().source if place is not None else None)
     try:
         report = build(req)
+    except ChartKeyError as e:
+        err(str(e))
+        return EXIT_ERROR
     except ValidationError as e:
         problems = "; ".join(f"{'.'.join(str(x) for x in er['loc'])}: {er['msg']}"
                              for er in e.errors())
