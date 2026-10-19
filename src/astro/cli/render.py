@@ -293,7 +293,7 @@ def aspects_table(report: ChartReport) -> list[str]:
 
 def varga_table(report: ChartReport) -> list[str]:
     var = report.get("vargas")
-    vargas = [v for v in report.request.vargas if v != "D1"]
+    vargas = [v for v in report.request.varga_table if v != "D1"]
     if var is None or not vargas:
         return []
     head = f"{'Body':<10} " + " ".join(f"{v:<4}" for v in vargas)
@@ -437,7 +437,9 @@ def header(report: ChartReport) -> list[str]:
     method = report.method
     default = " (default)" if req.method == "parashari" and not req.method_given else ""
     lines = [
-        f"Method     {method.id}{default}: {method.description} [{method.status}]",
+        f"Method     {method.id}{default}: {method.description}"
+        + (" [draft: calculations only, no reviewed rules yet]" if method.status == "draft"
+           else ""),
         f"Birth      {when} {zone} ({req.calendar})   UTC {n.utc:%Y-%m-%d %H:%M}",
         f"Place      {place}  {abs(req.latitude):.4f}{'N' if req.latitude >= 0 else 'S'} "
         f"{abs(req.longitude):.4f}{'E' if req.longitude >= 0 else 'W'}",
@@ -478,7 +480,7 @@ VARGA_NAMES = {"D1": "Rasi", "D2": "Hora", "D3": "Drekkana", "D4": "Chaturthamsa
 def render(report: ChartReport, style: str = "south") -> str:
     chart = south_chart if style == "south" else north_chart
     blocks: list[list[str]] = [header(report)]
-    for v in report.request.charts:
+    for v in report.request.vargas:
         blocks.append(chart(report, v, VARGA_NAMES.get(v, v)))
     blocks += [planet_table(report), ["Dignity and condition"] + condition_table(report),
                ["Aspects cast (graha drishti)"] + aspects_table(report), varga_table(report),

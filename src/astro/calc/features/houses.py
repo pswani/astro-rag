@@ -70,27 +70,26 @@ class Houses:
                                       ref.rashi_id(ref_sign + n - 1), frame=frame,
                                       sensitivity=ref_a.sensitivity, margins=ref_a.margins))
             use_cusps = frame == "lagna" and ctx.profile.house_system in ("sripati", "placidus")
-            if use_cusps:
-                try:
-                    b = ctx.birth
-                    ctx.ephemeris.cusps(b.jd_ut, b.latitude, b.longitude, ctx.profile)
-                except CalcError as e:  # cusps undefined: only this frame's houses are unknown
-                    facts += [ctx.unknown("house", subject(bd), frame=frame) for bd in BODIES
-                              if subject(bd) != ref_subj]
-                    unavailable[frame] = f"{e.reason.value}: {e.detail}"
-                    continue
+            frame_facts: list[ChartFact] = []
             for body in BODIES:
                 subj = subject(body)
                 if subj == ref_subj:
                     continue  # a graha is trivially in house 1 from itself
                 sign_f = pos.fact("sign", subj)
                 if use_cusps:
-                    house, a = self._cusp_house(ctx, body)
+                    try:
+                        house, a = self._cusp_house(ctx, body)
+                    except CalcError as e:  # cusps undefined: only this frame is unknown
+                        frame_facts = [ctx.unknown("house", subject(bd), frame=frame)
+                                       for bd in BODIES if subject(bd) != ref_subj]
+                        unavailable[frame] = f"{e.reason.value}: {e.detail}"
+                        break
                 else:
                     house = houses_apart(ref_sign, ref.rashi_index(sign_f.value))
                     a = Assessment.combine(ref_a, assessment_of(sign_f))
-                facts.append(ctx.fact("house", subj, house, frame=frame,
-                                      sensitivity=a.sensitivity, margins=a.margins))
+                frame_facts.append(ctx.fact("house", subj, house, frame=frame,
+                                            sensitivity=a.sensitivity, margins=a.margins))
+            facts += frame_facts
         return FeatureResult(feature_id=self.id, status=Status.OK, facts=tuple(facts),
                              provenance={"frames": frames,
                                          "lagna_system": ctx.profile.house_system,

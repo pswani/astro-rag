@@ -2,8 +2,13 @@
 
 A method is a profile (`profiles/method/<id>.yaml`) plus an adapter that contributes features
 and, later, namespaced predicate operators. Adding a method adds a profile, an adapter, ontology
-entries, rule cards, topic maps and eval cases, with no change to core code paths. Adapters are
-discovered through the `astro.methods` entry-point group, so an installed package can add one.
+entries, rule cards, topic maps and eval cases, with no change to core code paths. The built-in
+adapters are registered directly; installed packages can add more through the `astro.methods`
+entry-point group, and a plugin that fails to load is reported without affecting the others.
+
+Status gate (design §7.10): only `active` methods produce readings (rule evaluation, evidence
+bundles). Calculations, which do not depend on reviewed rules, may use a `draft` method's
+features and default profile; a `withdrawn` method is never used.
 """
 
 from __future__ import annotations
@@ -66,19 +71,33 @@ class MethodRegistry:
         for pid, prof in self.profiles.items():
             if prof.id != pid:
                 raise CalcError(Reason.UNSUPPORTED_PROFILE, f"{pid}.yaml declares id {prof.id}")
-        self.adapters: dict[str, MethodAdapter] = {}
+        from astro.methods.bnn import BnnAdapter
+        from astro.methods.parashari import ParashariAdapter
+
+        self.adapters: dict[str, MethodAdapter] = {
+            a.method_id: a for a in (ParashariAdapter(), BnnAdapter())}
+        self.broken: dict[str, str] = {}
         for ep in entry_points(group="astro.methods"):
-            adapter = ep.load()()
+            if ep.name in self.adapters:
+                continue  # built-ins are registered above, whatever the install metadata says
+            try:
+                adapter = ep.load()()
+            except Exception as e:  # noqa: BLE001 - one bad plugin must not block the others
+                self.broken[ep.name] = f"{type(e).__name__}: {e}"
+                continue
             self.adapters[adapter.method_id] = adapter
 
-    def get(self, method_id: str, *, allow_draft: bool = False
+    def get(self, method_id: str, *, purpose: Literal["reading", "calculation"] = "reading"
             ) -> tuple[MethodProfile, MethodAdapter]:
-        """The method's profile and adapter. Only `active` methods run unless `allow_draft`
-        (design §7.10); anything else is `unsupported_method`, never another school."""
+        """The method's profile and adapter, gated by status for the purpose (module doc).
+        Anything not allowed is `unsupported_method`, never another school."""
         prof = self.profiles.get(method_id)
         adapter = self.adapters.get(method_id)
         if prof is None or adapter is None:
-            raise CalcError(Reason.UNSUPPORTED_METHOD, f"no method {method_id!r}")
-        if prof.status == "withdrawn" or (prof.status == "draft" and not allow_draft):
-            raise CalcError(Reason.UNSUPPORTED_METHOD, f"method {method_id} is {prof.status}")
+            detail = self.broken.get(method_id, "not installed")
+            raise CalcError(Reason.UNSUPPORTED_METHOD, f"no method {method_id!r} ({detail})")
+        allowed = {"reading": ("active",), "calculation": ("active", "draft")}[purpose]
+        if prof.status not in allowed:
+            raise CalcError(Reason.UNSUPPORTED_METHOD,
+                            f"method {method_id} is {prof.status}: not available for {purpose}")
         return prof, adapter

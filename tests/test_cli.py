@@ -278,15 +278,15 @@ def test_default_method_is_stated_and_sections_present():
 
 
 def test_bnn_method_and_native_gender():
-    code, out, _ = run(*PUNE, "--method", "bnn", "--charts", "D1")
+    code, out, _ = run(*PUNE, "--method", "bnn", "--vargas", "D1")
     assert code == EXIT_OK and "Method     bnn:" in out and "Profile    bnn_v1" in out
     assert "BNN links" in out and "give --native-gender" in out
-    code, out, _ = run(*PUNE, "--method", "bnn", "--native-gender", "female", "--charts", "D1")
+    code, out, _ = run(*PUNE, "--method", "bnn", "--native-gender", "female", "--vargas", "D1")
     assert "Native karaka: Venus" in out
 
 
 def test_all_vargas_and_unknown_names():
-    code, out, _ = run(*PUNE, "--vargas", "all", "--charts", "D60")
+    code, out, _ = run(*PUNE, "--varga-table", "all", "--vargas", "D60")
     assert code == EXIT_OK and "Shashtiamsa D60" not in out and "Shashtiamsa (D60)" in out
     assert "D2   D3   D4   D7   D9   D10  D12  D16  D20  D24  D27  D30  D40  D45  D60" in out
     code, _, err = run(*PUNE, "--vargas", "D5")
@@ -295,3 +295,10 @@ def test_all_vargas_and_unknown_names():
     assert code == EXIT_NEEDS_INPUT and "unknown method" in err
     code, _, err = run(*PUNE, "--method", "parashari", "--profile", "bnn_v1")
     assert code == EXIT_UNSUPPORTED and "not a calculation profile of method parashari" in err
+
+
+def test_vargas_keeps_its_meaning_and_varga_table_is_separate():
+    code, out, _ = run(*PUNE, "--vargas", "D1,D9")
+    assert code == EXIT_OK and "Navamsa (D9)" in out and "Dasamsa (D10)" not in out
+    assert "Body       D9" in out  # the table defaults to the charts drawn
+    assert "[draft: calculations only, no reviewed rules yet]" in out

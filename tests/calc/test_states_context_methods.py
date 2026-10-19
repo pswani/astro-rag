@@ -69,17 +69,17 @@ def test_period_lord_context():
 def test_method_registry_and_gating():
     reg = MethodRegistry(ROOT / "profiles" / "method")
     assert {"parashari", "bnn"} <= set(reg.adapters)
-    prof, adapter = reg.get("bnn", allow_draft=True)
+    prof, adapter = reg.get("bnn", purpose="calculation")
     assert prof.default_calc_profile == "bnn_v1" and "native_gender" in prof.optional_inputs
     ids = {f.id for f in adapter.feature_set()}
     assert {"bnn_relations", "bnn_karakas", "bnn_triggers", "positions"} <= ids
     reqs = [r.feature_id for r in adapter.features({"as_of": "2026-10-19T00:00:00+00:00"})]
     assert "dasha_context" in reqs and "bnn_relations" in reqs
     with pytest.raises(CalcError) as e:
-        reg.get("bnn")  # draft methods do not run by default (design §7.10)
+        reg.get("bnn")  # a draft method produces no readings (design §7.10)
     assert e.value.reason is Reason.UNSUPPORTED_METHOD
     with pytest.raises(CalcError):
-        reg.get("kp", allow_draft=True)
+        reg.get("kp", purpose="calculation")
 
 
 def test_method_profile_validation(tmp_path):

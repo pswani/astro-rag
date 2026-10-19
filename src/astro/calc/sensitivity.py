@@ -7,6 +7,7 @@ is not labelled stable.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from astro.calc.core.timescale import MINUTE
@@ -36,19 +37,25 @@ STABLE = Assessment("stable", (None, None))
 UNKNOWN = Assessment("unknown", (None, None))
 
 
-def assess(lon: Fn, t: float, u_days: float, *, width: float, step: float,
-           speed: Fn | None = None, offset: float = 0.0) -> Assessment:
-    if u_days <= 0:
+def assess(lon: Fn, t: float, u_days: float, *, step: float, width: float | None = None,
+           offset: float = 0.0, targets: Sequence[float] = (), speed: Fn | None = None
+           ) -> Assessment:
+    """Sensitivity of a fact that changes when `lon` crosses `offset + k·width` and/or any of
+    `targets` (degrees) inside [t − u, t + u]."""
+    if u_days <= 0 or (width is None and not targets):
         return STABLE
-    cs = crossings(lon, t - u_days, t + u_days, step=min(step, u_days), speed=speed, width=width,
-                   offset=offset)
+    cs = crossings(lon, t - u_days, t + u_days, step=min(step, u_days), speed=speed,
+                   width=width, offset=offset, targets=targets)
+    return _from_crossings(cs, t)
+
+
+def _from_crossings(cs, t: float) -> Assessment:
     if not cs:
         return STABLE
     before = [(t - c.jd) / MINUTE for c in cs if c.jd <= t]
     after = [(c.jd - t) / MINUTE for c in cs if c.jd > t]
     return Assessment("sensitive", (min(before) if before else None,
                                     min(after) if after else None))
-
 
 def assess_many(lon: Fn, t: float, u_days: float, *, base_width: float,
                 multiples: dict[str, int], step: float, speed: Fn | None = None
@@ -66,26 +73,6 @@ def assess_many(lon: Fn, t: float, u_days: float, *, base_width: float,
     out = {}
     for name, m in multiples.items():
         hits = [c for c in cs if round(c.boundary / base_width) % count % m == 0]
-        if not hits:
-            out[name] = STABLE
-            continue
-        before = [(t - c.jd) / MINUTE for c in hits if c.jd <= t]
-        after = [(c.jd - t) / MINUTE for c in hits if c.jd > t]
-        out[name] = Assessment("sensitive", (min(before) if before else None,
-                                             min(after) if after else None))
+        out[name] = _from_crossings(hits, t)
     return out
 
-
-def assess_targets(lon: Fn, t: float, u_days: float, *, targets: list[float], step: float,
-                   speed: Fn | None = None) -> Assessment:
-    """Sensitivity of a fact that changes when `lon` crosses any of `targets` (degrees)."""
-    if u_days <= 0 or not targets:
-        return STABLE
-    cs = crossings(lon, t - u_days, t + u_days, step=min(step, u_days), speed=speed,
-                   targets=targets)
-    if not cs:
-        return STABLE
-    before = [(t - c.jd) / MINUTE for c in cs if c.jd <= t]
-    after = [(c.jd - t) / MINUTE for c in cs if c.jd > t]
-    return Assessment("sensitive", (min(before) if before else None,
-                                    min(after) if after else None))

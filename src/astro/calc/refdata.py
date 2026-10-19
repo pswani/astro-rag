@@ -38,10 +38,10 @@ class VargaSpec:
     table: dict[str, tuple[tuple[float, int], ...]] | None = None  # parity → (end°, sign)
 
     def boundaries(self) -> list[float]:
-        """Absolute longitudes of every part boundary (for sensitivity)."""
+        """Absolute longitudes of every part boundary of a table varga (for sensitivity);
+        equal-part vargas use the part width instead."""
         if self.table is None:
-            w = 30.0 / self.divisions
-            return [s * 30.0 + k * w for s in range(12) for k in range(self.divisions)]
+            raise ValueError(f"{self.id} has equal parts: use 30 / divisions")
         out = []
         for s in range(12):
             parts = self.table["odd" if s % 2 == 0 else "even"]

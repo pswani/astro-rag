@@ -14,6 +14,7 @@ from astro.calc.core.status import Status
 from astro.calc.engine import Deps, FeatureRequest
 from astro.calc.ephemeris.port import BODIES
 from astro.calc.features.common import assessment_of, subject
+from astro.calc.features.houses import DEFAULT_FRAMES as HOUSE_DEFAULT_FRAMES
 from astro.calc.model import ChartFact, FeatureResult, Relation
 from astro.calc.refdata import GRAHAS_7
 from astro.calc.sensitivity import Assessment
@@ -26,6 +27,8 @@ class Relations:
 
     def requires(self, params: dict[str, Any]) -> list[FeatureRequest]:
         frames = tuple(params.get("frames", DEFAULT_FRAMES))
+        if set(frames) <= set(HOUSE_DEFAULT_FRAMES):  # share the default houses request
+            return [FeatureRequest.of("positions"), FeatureRequest.of("houses")]
         return [FeatureRequest.of("positions"), FeatureRequest.of("houses", frames=frames)]
 
     def compute(self, ctx: ChartContext, deps: Deps, params: dict[str, Any]) -> FeatureResult:
@@ -40,15 +43,20 @@ class Relations:
 
         # lordships and occupants per frame
         for frame in frames:
+            # an unknown placement (time unknown, cusps undefined) makes occupants unknown
+            placements_known = all(f.value is not None for f in houses.facts
+                                   if f.kind == "house" and f.frame == frame)
             for n in range(1, 13):
                 hs = houses.fact("house_sign", f"bhava:{n}", frame=frame)
                 if hs.value is None:
                     facts.append(ctx.unknown("lord_of", f"bhava:{n}", frame=frame))
+                else:
+                    facts.append(ctx.fact("lord_of", f"bhava:{n}",
+                                          ref.sign_lord(ref.rashi_index(hs.value)), frame=frame,
+                                          sensitivity=hs.sensitivity, margins=hs.margin_minutes))
+                if hs.value is None or not placements_known:
                     facts.append(ctx.unknown("occupants", f"bhava:{n}", frame=frame))
                     continue
-                facts.append(ctx.fact("lord_of", f"bhava:{n}",
-                                      ref.sign_lord(ref.rashi_index(hs.value)), frame=frame,
-                                      sensitivity=hs.sensitivity, margins=hs.margin_minutes))
                 in_house, nearby = [], []
                 for b in BODIES:
                     try:

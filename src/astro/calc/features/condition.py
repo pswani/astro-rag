@@ -9,7 +9,8 @@ Conventions come from the profile (calc-review G-C5…G-C8) and are provisional 
 - Combustion: angular distance in longitude to the Sun within the profile orb (the `_retro` orb
   when retrograde). The Sun and the nodes are never combust.
 - Graha yuddha: two of the profile's bodies within `orb_deg` in longitude; the winner by the
-  profile rule. Gandanta: within `arc_deg` of a water–fire junction (0°, 120°, 240°). Rashi sandhi:
+  profile rule. A planet in several wars is a loser if it lost any of them; the relations keep
+  every pair. Gandanta: within `arc_deg` of a water–fire junction (0°, 120°, 240°). Rashi sandhi:
   within `arc_deg` of a sign boundary.
 Every fact's sensitivity comes from solving the relevant boundary crossings (CALC-7).
 """
@@ -23,13 +24,17 @@ from astro.calc.core.angles import deg_in_sign, norm360, sign_index, signed_diff
 from astro.calc.core.status import Status
 from astro.calc.engine import Deps, FeatureRequest
 from astro.calc.ephemeris.port import BODIES
-from astro.calc.features.common import assess_boundaries, assessment_of, points, subject
+from astro.calc.features.common import (
+    assess_angle,
+    assess_boundaries,
+    assessment_of,
+    points,
+    subject,
+)
 from astro.calc.model import ChartFact, FeatureResult, Relation
 from astro.calc.refdata import GRAHAS_7
-from astro.calc.sensitivity import Assessment, assess_targets
+from astro.calc.sensitivity import Assessment
 
-_GRADE = {"friend": "friend", "neutral": "neutral", "enemy": "enemy",
-          "great_friend": "great_friend", "great_enemy": "great_enemy"}
 COMBUSTIBLE = ("moon", "mars", "mercury", "jupiter", "venus", "saturn")
 JUNCTIONS = (0.0, 120.0, 240.0)
 
@@ -87,8 +92,8 @@ class Condition:
                 continue
             lord = ctx.refdata.sign_lord(sign_index(lon[s]))
             rel = friendship.get((s, lord))
-            dig = dignity_of(ctx, s, lon[s], None if rel is None else _GRADE[rel.value])
-            a = Assessment.combine(sign_a[s], self._assess(ctx, g, dignity_boundaries(ctx, s)))
+            dig = dignity_of(ctx, s, lon[s], None if rel is None else rel.value)
+            a = Assessment.combine(sign_a[s], assess_boundaries(ctx, g, dignity_boundaries(ctx, s)))
             if rel is not None and basis == "compound":  # temporal part moves with the lord
                 a = Assessment.combine(a, sign_a.get(lord, a))
             facts.append(ctx.fact("dignity", s, f"dignity:{dig}", sensitivity=a.sensitivity,
@@ -105,30 +110,34 @@ class Condition:
             retro = pos.fact("retrograde", s).value
             orb = prof.combustion.orbs.get(f"{g}_retro" if retro else g,
                                            prof.combustion.orbs[g])
-            a = self._assess_diff(ctx, g, "sun", [orb, 360.0 - orb])
+            a = assess_angle(ctx, g, "sun", [orb, 360.0 - orb])
             facts.append(ctx.fact("sun_distance", s, dist, unit="deg"))
             facts.append(ctx.fact("combust", s, dist <= orb, sensitivity=a.sensitivity,
                                   margins=a.margins))
 
         # graha yuddha
         gy = prof.graha_yuddha
-        outcome = {f"graha:{g}": "none" for g in BODIES}
+        won: dict[str, int] = {f"graha:{g}": 0 for g in BODIES}
+        lost: dict[str, int] = {f"graha:{g}": 0 for g in BODIES}
         war_a = {f"graha:{g}": Assessment("stable", (None, None)) for g in BODIES}
         for i, ga in enumerate(gy.bodies):
             for gb in gy.bodies[i + 1:]:
                 sa, sb = f"graha:{ga}", f"graha:{gb}"
-                a = self._assess_diff(ctx, ga, gb, [gy.orb_deg, 360.0 - gy.orb_deg])
+                a = assess_angle(ctx, ga, gb, [gy.orb_deg, 360.0 - gy.orb_deg])
                 war_a[sa] = Assessment.combine(war_a[sa], a)
                 war_a[sb] = Assessment.combine(war_a[sb], a)
                 if abs(signed_diff(lon[sa], lon[sb])) > gy.orb_deg:
                     continue
                 win, lose = self._winner(pos, sa, sb, lon, gy.winner)
-                outcome[win], outcome[lose] = "winner", "loser"
+                won[win] += 1
+                lost[lose] += 1
                 rels.append(Relation(id=f"{ctx.chart_id}/graha_yuddha/{win}/{lose}",
                                      kind="graha_yuddha", source=win, target=lose,
                                      system=f"orb_{gy.orb_deg}_{gy.winner}", value=win,
                                      profile_id=prof.id, sensitivity=a.sensitivity))
-        for s, v in outcome.items():
+        for s in won:
+            # a planet in several wars is a loser if it lost any of them
+            v = "loser" if lost[s] else "winner" if won[s] else "none"
             a = war_a[s]
             facts.append(ctx.fact("graha_yuddha", s, v, sensitivity=a.sensitivity,
                                   margins=a.margins))
@@ -142,9 +151,9 @@ class Condition:
                 continue
             near_j = min(abs(signed_diff(lon[s], j)) for j in JUNCTIONS)
             near_b = abs(signed_diff(lon[s], round(lon[s] / 30.0) * 30.0))
-            ga = self._assess(ctx, p, [norm360(j + k * g_arc) for j in JUNCTIONS
+            ga = assess_boundaries(ctx, p, [norm360(j + k * g_arc) for j in JUNCTIONS
                                        for k in (-1, 1)])
-            sa = self._assess(ctx, p, [norm360(k * 30.0 + d * s_arc) for k in range(12)
+            sa = assess_boundaries(ctx, p, [norm360(k * 30.0 + d * s_arc) for k in range(12)
                                        for d in (-1, 1)])
             facts.append(ctx.fact("gandanta", s, near_j < g_arc, sensitivity=ga.sensitivity,
                                   margins=ga.margins))
@@ -160,19 +169,5 @@ class Condition:
         if rule == "north_latitude":
             la, lb = pos.fact("latitude", sa).value, pos.fact("latitude", sb).value
             return (sa, sb) if la >= lb else (sb, sa)
-        return (sa, sb) if lon[sa] <= lon[sb] else (sb, sa)
-
-    @staticmethod
-    def _assess(ctx: ChartContext, body: str, targets: list[float]) -> Assessment:
-        return assess_boundaries(ctx, body, targets)
-
-    @staticmethod
-    def _assess_diff(ctx: ChartContext, a: str, b: str, targets: list[float]) -> Assessment:
-        """Sensitivity of a fact that changes when the angle a − b crosses `targets`."""
-        la, lb = ctx.lon_fn(a), ctx.lon_fn(b)  # type: ignore[arg-type]
-        va, vb = ctx.speed_fn(a), ctx.speed_fn(b)  # type: ignore[arg-type]
-        diff = lambda t: norm360(la(t) - lb(t))  # noqa: E731
-        speed = lambda t: va(t) - vb(t)  # noqa: E731
-        step = min(ctx.step_days(a), ctx.step_days(b))
-        return assess_targets(diff, ctx.birth.jd_ut, ctx.birth.u_days, targets=targets,
-                              step=step, speed=speed)
+        # "lesser" along the zodiac: sb ahead of sa by less than 180° means sa is behind
+        return (sa, sb) if signed_diff(lon[sb], lon[sa]) >= 0 else (sb, sa)

@@ -2,7 +2,7 @@
 
     astro chart --date 1985-03-14 --time 06:42 --place "Pune, IN"
     astro chart --date 1985-03-14 --lat 18.52 --lon 73.85 --tz Asia/Kolkata --style north
-    astro chart --date 1985-03-14 --time 06:42 --place Pune --method bnn --vargas all
+    astro chart --date 1985-03-14 --time 06:42 --place Pune --method bnn --varga-table all
     astro places Springfield
     astro ephemeris fetch
 
@@ -108,10 +108,11 @@ def build_parser() -> argparse.ArgumentParser:
                    help="calculation profile ID (default: the method's default profile)")
     c.add_argument("--native-gender", choices=["male", "female"],
                    help="optional BNN input: Jupiter or Venus signifies the native (INP-8)")
-    c.add_argument("--charts", default="D1,D9,D10",
-                   help="divisional charts to draw, e.g. D1,D9 (any of D1…D60)")
     c.add_argument("--vargas", default="D1,D9,D10",
-                   help='divisional signs to tabulate, comma-separated, or "all"')
+                   help="divisional charts to draw, e.g. D1,D9 (any of D1…D60)")
+    c.add_argument("--varga-table", default=None,
+                   help='divisional signs to tabulate, comma-separated, or "all" '
+                        "(default: the charts drawn)")
     c.add_argument("--style", choices=["south", "north"], default="south",
                    help="chart layout: south (fixed signs) or north (fixed houses)")
     c.add_argument("--as-of", type=_instant, help="instant for the current dasha (default now)")
@@ -158,13 +159,6 @@ def _resolve_place(args, err) -> tuple[Place | None, float, float] | int:
     return EXIT_NEEDS_INPUT
 
 
-def _varga_ids(home) -> tuple[str, ...]:
-    from ruamel.yaml import YAML
-
-    data = YAML(typ="safe").load((home / "ontology" / "vargas.yaml").read_text())
-    return tuple(data["vargas"])
-
-
 def _varga_list(text: str, known: tuple[str, ...]) -> tuple[str, ...]:
     if text.strip().lower() == "all":
         return known
@@ -176,6 +170,7 @@ def _varga_list(text: str, known: tuple[str, ...]) -> tuple[str, ...]:
 
 
 def cmd_chart(args, out, err) -> int:
+    from astro.calc.refdata import YamlReferenceData
     from astro.cli.render import render
     from astro.cli.report import ChartRequest, build
 
@@ -189,10 +184,11 @@ def cmd_chart(args, out, err) -> int:
     if method not in methods:
         err(f"unknown method {method!r}; available: {', '.join(methods)}")
         return EXIT_NEEDS_INPUT
-    known_vargas = _varga_ids(home)
+    known_vargas = YamlReferenceData(home / "ontology").varga_ids()
     try:
         vargas = _varga_list(args.vargas, known_vargas)
-        charts = _varga_list(args.charts, known_vargas)
+        table = vargas if args.varga_table is None else _varga_list(args.varga_table,
+                                                                     known_vargas)
     except ValueError as e:
         err(str(e))
         return EXIT_NEEDS_INPUT
@@ -206,7 +202,7 @@ def cmd_chart(args, out, err) -> int:
         place=place, timezone=args.tz, utc_offset_minutes=args.utc_offset,
         calendar=args.calendar, precision=args.precision, uncertainty_minutes=args.uncertainty,
         method=method, method_given=args.method is not None, profile_id=args.profile,
-        native_gender=args.native_gender, vargas=vargas, charts=charts,
+        native_gender=args.native_gender, vargas=vargas, varga_table=table,
         as_of=args.as_of, elevation_m=args.elevation, place_query=args.place,
         place_source=default_gazetteer().source if place is not None else None)
     try:

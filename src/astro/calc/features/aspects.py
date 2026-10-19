@@ -15,7 +15,7 @@ from astro.calc.core.angles import houses_apart, signed_diff
 from astro.calc.core.status import Status
 from astro.calc.engine import Deps, FeatureRequest
 from astro.calc.ephemeris.port import BODIES
-from astro.calc.features.common import LAGNA, assessment_of, subject
+from astro.calc.features.common import LAGNA, assess_angle, assessment_of, subject
 from astro.calc.model import ChartFact, FeatureResult, Relation
 from astro.calc.sensitivity import Assessment
 
@@ -82,6 +82,7 @@ class Aspects:
         conj = prof.conjunction
         lon = {s: pos.fact("longitude", s).value for s in sign}
         partners: dict[str, list[str]] = {s: [] for s in sign}
+        pair_sens: dict[tuple[str, str], Assessment] = {}
         subjects = list(sign)
         for i, a in enumerate(subjects):
             for b in subjects[i + 1:]:
@@ -91,8 +92,14 @@ class Aspects:
                     hit = sign[a] == sign[b]
                 else:
                     hit = abs(signed_diff(lon[a], lon[b])) <= conj.orb_deg
+                if conj.mode == "same_sign":
+                    pair_a = Assessment.combine(sign_a[a], sign_a[b])
+                else:  # the conjunction appears or ends where the angle crosses ±orb
+                    pair_a = assess_angle(ctx, a.split(":")[1], b.split(":")[1],
+                                          [conj.orb_deg, 360.0 - conj.orb_deg])
+                pair_sens[(a, b)] = pair_sens[(b, a)] = pair_a
                 if hit:
-                    sens = Assessment.combine(sign_a[a], sign_a[b]).sensitivity
+                    sens = pair_a.sensitivity
                     rels.append(Relation(
                         id=f"{ctx.chart_id}/conjunction/{a}/{b}", kind="conjunction", source=a,
                         target=b, system=conj.mode, direction="mutual",
@@ -101,7 +108,8 @@ class Aspects:
                     partners[a].append(b)
                     partners[b].append(a)
         for s, ps in partners.items():
-            a = Assessment.combine(sign_a[s], *(sign_a[p] for p in ps))
+            # any pair could start or stop being conjunct, not only the current partners
+            a = Assessment.combine(sign_a[s], *(v for (x, _), v in pair_sens.items() if x == s))
             facts.append(ctx.fact("conjunct_with", s, tuple(ps), frame="rashi",
                                   sensitivity=a.sensitivity, margins=a.margins))
         return FeatureResult(feature_id=self.id, status=Status.OK, facts=tuple(facts),

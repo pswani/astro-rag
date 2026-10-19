@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from astro.calc.context import ChartContext
-from astro.calc.core.angles import NAKSHATRA_SPAN, PADA_SPAN, SIGN_SPAN
+from astro.calc.core.angles import NAKSHATRA_SPAN, PADA_SPAN, SIGN_SPAN, norm360
 from astro.calc.ephemeris.port import BODIES, Body
 from astro.calc.model import ChartFact
-from astro.calc.sensitivity import UNKNOWN, Assessment, assess, assess_many, assess_targets
+from astro.calc.sensitivity import UNKNOWN, Assessment, assess, assess_many
 from astro.calc.solver import find_stations
 
 LAGNA = "lagna"
@@ -44,11 +44,21 @@ def assess_boundaries(ctx: ChartContext, body: str, targets: list[float]) -> Ass
     if body == LAGNA:
         if not b.time_known:
             return UNKNOWN
-        return assess_targets(ctx.lagna_fn(), b.jd_ut, b.u_days, targets=targets,
-                              step=ctx.step_days(LAGNA))
+        return assess(ctx.lagna_fn(), b.jd_ut, b.u_days, targets=targets,
+                      step=ctx.step_days(LAGNA))
     speed = ctx.speed_fn(body) if ctx.needs_speed(body) else None  # type: ignore[arg-type]
-    return assess_targets(ctx.lon_fn(body), b.jd_ut, b.u_days,  # type: ignore[arg-type]
-                          targets=targets, step=ctx.step_days(body), speed=speed)
+    return assess(ctx.lon_fn(body), b.jd_ut, b.u_days,  # type: ignore[arg-type]
+                  targets=targets, step=ctx.step_days(body), speed=speed)
+
+
+def assess_angle(ctx: ChartContext, a: str, b: str, targets: list[float]) -> Assessment:
+    """Sensitivity of a fact that changes when the angle a − b (degrees, [0, 360)) crosses any
+    of `targets`: combustion, graha yuddha and orb conjunctions."""
+    la, lb = ctx.lon_fn(a), ctx.lon_fn(b)  # type: ignore[arg-type]
+    va, vb = ctx.speed_fn(a), ctx.speed_fn(b)  # type: ignore[arg-type]
+    step = min(ctx.step_days(a), ctx.step_days(b))
+    return assess(lambda t: norm360(la(t) - lb(t)), ctx.birth.jd_ut, ctx.birth.u_days,
+                  targets=targets, step=step, speed=lambda t: va(t) - vb(t))
 
 
 ZODIAC_MULTIPLES = {"pada": 1, "nakshatra": 4, "sign": 9}  # in pada spans

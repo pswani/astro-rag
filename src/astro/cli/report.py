@@ -37,8 +37,8 @@ class ChartRequest:
     uncertainty_minutes: float | None = None
     method: str = "parashari"
     profile_id: str | None = None   # default: the method profile's default calc profile
-    vargas: tuple[str, ...] = ("D1", "D9", "D10")   # computed and tabulated
-    charts: tuple[str, ...] = ("D1", "D9", "D10")   # drawn; always computed too
+    vargas: tuple[str, ...] = ("D1", "D9", "D10")   # charts drawn
+    varga_table: tuple[str, ...] = ("D1", "D9", "D10")  # signs tabulated
     method_given: bool = False
     as_of: datetime | None = None   # for the current dasha; default: now
     native_gender: str | None = None
@@ -92,9 +92,10 @@ def _chart_key() -> bytes:
 
 def build(req: ChartRequest) -> ChartReport:
     home = astro_home()
-    # draft methods are allowed here: the CLI states the status in every report (design §7.10)
+    # a chart is a calculation, so a draft method's features may be used (design §7.10);
+    # the report states the method's status
     method, adapter = MethodRegistry(home / "profiles" / "method").get(req.method,
-                                                                       allow_draft=True)
+                                                                       purpose="calculation")
     profile_id = req.profile_id or method.default_calc_profile
     if profile_id not in method.calc_profiles:
         raise CalcError(Reason.UNSUPPORTED_PROFILE,
@@ -124,7 +125,7 @@ def build(req: ChartRequest) -> ChartReport:
     inputs = {"native_gender": req.native_gender} if req.native_gender else {}
     ctx = ChartContext(report.chart_id, norm.birth, profile, eph, refdata, inputs)
     report.as_of = (req.as_of or datetime.now(UTC)).astimezone(UTC)
-    vargas = tuple(dict.fromkeys((*req.vargas, *req.charts)))
+    vargas = tuple(dict.fromkeys((*req.vargas, *req.varga_table)))
     plan = {"as_of": report.as_of.isoformat(), "vargas": vargas}
     requests = adapter.features(plan)
     out = Engine(adapter.feature_set()).run(ctx, requests)
