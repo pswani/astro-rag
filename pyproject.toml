@@ -15,6 +15,7 @@ dependencies = [
   "scipy>=1.11",
   "numpy>=1.26",
   "rfc8785>=0.1.4",
+  "certifi>=2024.2",  # CA roots for `astro ephemeris fetch` where Python has none
   "tzdata==2026.5",   # IANA 2026e, pinned in profiles (design §6.2)
 ]
 

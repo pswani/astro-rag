@@ -265,6 +265,32 @@ def test_fetch_survives_network_errors(monkeypatch, tmp_path):
     assert not any(tmp_path.iterdir())
 
 
+def test_fetch_passes_a_context_that_trusts_certifi(monkeypatch, tmp_path):
+    import ssl
+
+    import certifi
+
+    from astro import ephemeris_fetch
+
+    seen = []
+
+    def fake(url, timeout, context):
+        seen.append(context)
+        raise ssl.SSLCertVerificationError("CERTIFICATE_VERIFY_FAILED")
+
+    loaded = []
+    real = ssl.SSLContext.load_verify_locations
+    monkeypatch.setattr(ssl.SSLContext, "load_verify_locations",
+                        lambda self, *a, **k: (loaded.append(k.get("cafile")), real(self, *a, **k)))
+    monkeypatch.setattr(ephemeris_fetch.urllib.request, "urlopen", fake)
+    logs = []
+    assert not ephemeris_fetch.fetch([ROOT / "profiles/calc/parashari_v1.yaml"], tmp_path,
+                                     logs.append)
+    assert seen and all(isinstance(c, ssl.SSLContext) for c in seen)
+    assert certifi.where() in loaded
+    assert any("Install Certificates" in s for s in logs)
+
+
 # -- D9: method, vargas, condition and aspects in the report --------------------------------
 
 def test_default_method_is_stated_and_sections_present():
