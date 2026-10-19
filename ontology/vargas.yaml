@@ -1,0 +1,8 @@
+# Divisional charts: one declared Parashari construction per varga (VAR-2, KNW-11).
+# varga_sign = (sign + start_offset(sign) + floor(deg_in_sign / (30 / divisions))) mod 12
+# start rules: same (offset 0) | by_parity {odd, even} | by_modality {movable, fixed, dual}
+meta: {status: provisional, reviewed_by: null, source: "BPHS ch. 6"}
+vargas:
+  D1:  {divisions: 1,  parts: equal, start: {rule: same}}
+  D9:  {divisions: 9,  parts: equal, start: {rule: by_modality, movable: 0, fixed: 8, dual: 4}}
+  D10: {divisions: 10, parts: equal, start: {rule: by_parity, odd: 0, even: 8}}

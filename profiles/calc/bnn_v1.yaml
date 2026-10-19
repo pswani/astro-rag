@@ -1,0 +1,39 @@
+# Calculation profile (design §7.1). Immutable once used: a change creates a new _v<n>.
+# Fields listed under `provisional` await the reviewer's decision (calc-review §5).
+id: bnn_v1
+status: draft
+zodiac: sidereal
+ayanamsa: {id: lahiri, nutation: true}
+nodes: {model: mean, retrograde: always}
+house_system: whole_sign
+position: {origin: geocentric, apparent: true}
+vargas: {default: parashari}
+dasha:
+  system: vimshottari
+  year_days: 365.2425
+  levels: [MD, AD, PD]
+  span_years: 120
+  sandhi_margin_days: {MD: 180, AD: 15}
+sunrise: {definition: hindu_rising}
+lunar_month: amanta
+karaka_scheme: bnn
+retro_in_previous_sign: true
+eclipse: {orb_deg: 3.0}
+sensitivity:
+  step_minutes: {lagna: 2, moon: 60, sun: 720, mercury: 720, venus: 720, mars: 720,
+                 jupiter: 2880, saturn: 2880, mean_node: 2880, true_node: 360}
+ephemeris:
+  engine: swisseph
+  version: "2.10.03"
+  files:
+    - {name: sepl_18.se1, sha256: ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66}
+    - {name: semo_18.se1, sha256: 1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7}
+    - {name: seas_18.se1, sha256: a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2}
+  # Verified: JD 2378496.5 already falls back to Moshier for the Sun, 2378497.0 does not.
+  coverage: {start_jd: 2378497.0, end_jd: 2597641.5}   # 1800-01-01T12Z .. 2399-12-31T00Z
+time: {tzdata: "2026e", delta_t: swisseph_default}
+provisional:
+  - ayanamsa.nutation
+  - nodes.retrograde
+  - dasha.sandhi_margin_days
+  - eclipse.orb_deg

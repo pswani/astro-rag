@@ -1,0 +1,16 @@
+# Karaka schemes are method-specific and kept apart (SCH-BNN-2, design §7.10).
+meta: {status: provisional, reviewed_by: null, source: "R. G. Rao, BNN (edition: requirements open question 1)"}
+karaka_schemes:
+  bnn:
+    roles:
+      jupiter: [native_male, jiva]
+      venus: [wife, native_female]
+      saturn: [karma, career]
+      mars: [brother, land]
+      moon: [mother]
+      sun: [father]
+      mercury: [intellect, trade]
+      rahu: []
+      ketu: []
+    # which graha signifies the native, by the optional method input native_gender (INP-8)
+    native: {male: jupiter, female: venus}

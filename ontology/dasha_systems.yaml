@@ -1,0 +1,15 @@
+meta: {status: provisional, reviewed_by: null, source: "BPHS ch. 46"}
+dasha_systems:
+  vimshottari:
+    total_years: 120
+    # order from Ashwini's lord; the first MD lord is the lord of the Moon's nakshatra
+    sequence:
+      - {lord: ketu, years: 7}
+      - {lord: venus, years: 20}
+      - {lord: sun, years: 6}
+      - {lord: moon, years: 10}
+      - {lord: mars, years: 7}
+      - {lord: rahu, years: 18}
+      - {lord: jupiter, years: 16}
+      - {lord: saturn, years: 19}
+      - {lord: mercury, years: 17}

@@ -1,0 +1,72 @@
+# Panchanga limbs (design §7.4, KNW-12). Nitya yogas are a distinct entity type from chart yogas.
+meta: {status: provisional, reviewed_by: null, source: "standard panchanga tables"}
+tithis:   # index 0..29 = tithi 1..30
+  - shukla_pratipada
+  - shukla_dwitiya
+  - shukla_tritiya
+  - shukla_chaturthi
+  - shukla_panchami
+  - shukla_shashthi
+  - shukla_saptami
+  - shukla_ashtami
+  - shukla_navami
+  - shukla_dashami
+  - shukla_ekadashi
+  - shukla_dwadashi
+  - shukla_trayodashi
+  - shukla_chaturdashi
+  - shukla_purnima
+  - krishna_pratipada
+  - krishna_dwitiya
+  - krishna_tritiya
+  - krishna_chaturthi
+  - krishna_panchami
+  - krishna_shashthi
+  - krishna_saptami
+  - krishna_ashtami
+  - krishna_navami
+  - krishna_dashami
+  - krishna_ekadashi
+  - krishna_dwadashi
+  - krishna_trayodashi
+  - krishna_chaturdashi
+  - krishna_amavasya
+karanas:
+  movable: [bava, balava, kaulava, taitila, gara, vanija, vishti]   # cycle 8 times for k = 1..56
+  fixed: {0: kimstughna, 57: shakuni, 58: chatushpada, 59: naga}
+nitya_yogas:   # index 0..26
+  - vishkambha
+  - priti
+  - ayushman
+  - saubhagya
+  - shobhana
+  - atiganda
+  - sukarma
+  - dhriti
+  - shula
+  - ganda
+  - vriddhi
+  - dhruva
+  - vyaghata
+  - harshana
+  - vajra
+  - siddhi
+  - vyatipata
+  - variyana
+  - parigha
+  - shiva
+  - siddha
+  - sadhya
+  - shubha
+  - shukla
+  - brahma
+  - indra
+  - vaidhriti
+varas:   # index 0 = Sunday; lord of the day
+  - {id: sunday, lord: sun}
+  - {id: monday, lord: moon}
+  - {id: tuesday, lord: mars}
+  - {id: wednesday, lord: mercury}
+  - {id: thursday, lord: jupiter}
+  - {id: friday, lord: venus}
+  - {id: saturday, lord: saturn}
