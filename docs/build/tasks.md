@@ -80,6 +80,31 @@ Undecided conventions (calc-review §5, decisions 2–4) are implemented as **pr
 - [x] B7.3 Determinism: byte-identical re-run of a full feature run (CALC-9) — same bytes across re-runs, the cache and a fresh process
 - [x] B7.4 Review pass over the whole layer; fix findings — 10 findings, all fixed with regression tests (`tests/calc/test_review_fixes.py`); see below
 
+## C Standalone chart CLI (`astro chart`)
+
+- [x] C1 Offline gazetteer adapter over the GeoNames-derived `reverse_geocode` city table (155k places): `City[, State][, Country]` parsing, accent-insensitive matching, ambiguity → candidate list (design §6.2.2; partial B4.5)
+- [x] C2 Resource discovery: ontology/profiles via `ASTRO_HOME` or upward search; ephemeris via `ASTRO_EPHE` or `data/ephe`; `astro ephemeris fetch`
+- [x] C3 Chart assembly: normalize → engine run (positions, houses, vargas, panchanga, Vimshottari, dasha_active) → one report object; JSON output
+- [x] C4 Text rendering: South Indian and North Indian charts for D1/D9/D10, planet table with sensitivity flags, panchanga in local time, Vimshottari summary, provisional-setting and assumption notes
+- [x] C5 CLI: `astro chart`, `astro places`, exit codes (0 ok, 2 needs input, 3 unsupported), `python -m astro`
+- [x] C6 Tests: gazetteer, renderers, CLI end-to-end (incl. ambiguous place, DST fold, unknown time), review and fix
+
+### C6 review findings
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 | A 29 February birth crashed the dasha table (`replace(year=+120)`) | 120 years as a span in days |
+| 2 | "Los Angeles, CA", "Atlanta, Georgia", "Springfield, IL" read as countries | A qualifier narrows by country *or* state; an exact state beats a prefix |
+| 3 | Unknown-time North D9/D10 rotated on the D1 Moon | Chandra lagna uses the Moon's sign in that varga |
+| 4 | Missing ephemeris files exited 3 with no hint | Exit 1 with "run `astro ephemeris fetch`" |
+| 5 | Month 13, unknown `--profile`, out-of-range offsets and uncertainty raised tracebacks; `+05:75` was accepted | Validated: exit 2 with a message |
+| 6 | `astro places` crashed without `reverse_geocode` | Clean message, exit 1 |
+| 7 | Crowded signs silently dropped bodies | South cells grow; North triangles show "+n more" |
+| 8 | The ambiguity hint could loop | Exact-state match; every candidate also shows `--lat/--lon` |
+| 9 | `ephemeris fetch` tracebacked offline and could leave a truncated file | Errors logged per file; temp file + atomic rename |
+| 10 | The DST-fold hint conflicted with `--tz` | Hint says "in place of --tz" |
+| — | Lazy imports defeated; one-sided dasha shift line | `cli.fmt` helper; both directions shown |
+
 ## B7.4 review findings
 
 | # | Finding | Fix |
@@ -110,6 +135,7 @@ ruff check src tests scripts && lint-imports && pytest
 | Date | Change |
 |---|---|
 | 2026-10-19 | List created |
+| 2026-10-19 | C done: `astro chart` / `astro places` / `astro ephemeris`, 28 CLI tests, 10 review findings fixed. The offline city table covers B4.5 for names in GeoNames cities1000; alternate names (e.g. Bangalore) still need the full dump |
 | 2026-10-19 | B7 done: 168 tests, clean-venv CI check, oracle extra declares PyJHora's undeclared imports (CI fails instead of skipping) |
 | 2026-10-19 | B6 done (B6.3b blocked on G-R1). Real-data fixture: Saturn crosses natal Mercury three times in 2026–27 (TRN-2 acceptance); Sade Sati phases verified on a synthetic ephemeris |
 | 2026-10-19 | B4, B5.1–B5.7, B7.2 done. Oracle findings: PyJHora defaults to true geometric positions (Sun ~20″ from apparent), the true node and a per-chart *true* sidereal year; `drik.dhasavarga` uses cyclic (parivritti) D10, so `charts.divisional_chart(chart_method=1)` is the Parashari oracle. Recorded as G-C12 and G-D4 in calc-review |

@@ -18,14 +18,19 @@ dependencies = [
   "tzdata==2026.5",   # IANA 2026e, pinned in profiles (design §6.2)
 ]
 
+[project.scripts]
+astro = "astro.cli.main:main"
+
 [project.optional-dependencies]
-geo = ["timezonefinder>=6.5"]
+# offline place-name lookup (GeoNames-derived city table) and coordinates → time zone
+geo = ["timezonefinder>=6.5", "reverse_geocode>=1.6"]
 dev = [
   "pytest>=8",
   "hypothesis>=6.100",
   "import-linter>=2.0",
   "ruff>=0.5",
   "timezonefinder>=6.5",
+  "reverse_geocode>=1.6",
 ]
 # test-only oracle, never a runtime dependency (design D6); PyJHora imports these without
 # declaring them, and a missing one would make the oracle suite skip silently
@@ -65,7 +70,8 @@ type = "forbidden"
 source_modules = [
   "astro.calc.core", "astro.calc.model", "astro.calc.profile", "astro.calc.refdata",
   "astro.calc.solver", "astro.calc.sensitivity", "astro.calc.engine", "astro.calc.features",
-  "astro.calc.dasha", "astro.calc.transits", "astro.methods", "astro.normalize",
+  "astro.calc.dasha", "astro.calc.transits", "astro.methods", "astro.normalize", "astro.cli",
+  "astro.resources", "astro.ephemeris_fetch",
 ]
 forbidden_modules = ["swisseph"]
 allow_indirect_imports = true
