@@ -1462,6 +1462,8 @@ At 1024-d float32 plus sparse vectors and payload, that is about 150 MB. Even a 
 | ~~LangGraph's SQLite checkpointer may not accept a SQLCipher connection~~ **Closed 2026-10-19** | — | Verified: `SqliteSaver` works over `sqlcipher3` once a six-line subclass catches `sqlcipher3`'s own `OperationalError` in `setup()`; interrupt, resume after reopen and `delete_thread` all work ([phase1-foundations.md](phase1-foundations.md) §2.8) |
 | No OS keychain backend (headless Linux) | Store cannot keep its key | `0600` key file provider, chosen at `astro store init` |
 
+Open decisions are tracked, with answers, in [open-questions.md](../req/open-questions.md).
+
 | Open decision | Blocks | Default if not decided |
 |---|---|---|
 | BPHS and BNN editions (requirements Q1) | Phases 2, 5 | — |

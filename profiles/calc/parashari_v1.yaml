@@ -43,6 +43,7 @@ ephemeris:
   coverage: {start_jd: 2378497.0, end_jd: 2597641.5}   # 1800-01-01T12Z .. 2399-12-31T00Z
 time: {tzdata: "2026e", delta_t: swisseph_default}
 provisional:
+  - nodes.model
   - ayanamsa.nutation
   - nodes.retrograde
   - position.apparent
@@ -52,6 +53,7 @@ provisional:
   - dignity.friendship_basis
   - combustion.orbs
   - graha_yuddha.winner
+  - graha_yuddha.orb_deg
   - gandanta.arc_deg
   - sandhi.arc_deg
   - aspects.nodes

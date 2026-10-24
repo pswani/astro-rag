@@ -191,6 +191,8 @@ M2 is already governed by CALC-8 and CALC-9; this document adds only its deletio
 
 ## 8. Open questions
 
+> Tracked in [open-questions.md](open-questions.md) (C2, C3).
+
 | # | Question | Blocks |
 |---|---|---|
 | 1 | Default retention for reading history, and the default session idle time. | Phase 3 |

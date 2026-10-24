@@ -308,15 +308,17 @@ These need no expert data and catch most indexing errors:
 
 ## 5. Decisions needed
 
-| # | Decision | Owner | Blocks |
-|---|---|---|---|
-| 1 | Ephemeris file set and coverage range (G-C1) | Operator | INP-1 acceptance, phase 1 |
-| 2 | Node model and retrograde semantics; apparent vs true positions; dasha year length (G-C3, G-C12, G-C13, G-D4) | Reviewer, matched to JHora settings | NFR-1 fixtures (the code supports every option) |
-| 3 | Dignity precedence and friendship basis; yuddha winner; gandanta and sandhi arcs (G-C5…G-C7) | Reviewer | CALC-2 |
-| 4 | Aspect system, node aspects, conjunction definition (G-R1) | Reviewer | REL-1 |
-| 5 | Varga spec format (G-V1) | Design | Varga engine |
-| 6 | Functional-role table source (G-R2) | Reviewer | DAS-5 |
-| 7 | Adopt the modularity additions M1–M8 into design §7 | Operator | Engine skeleton |
-| 8 | Shadbala component spec (G-S2); PAN-3 conventions (G-PN2) | Reviewer + design | Phase 4 |
+Status 2026-10-24: open items are tracked, with answers, in [open-questions.md](../req/open-questions.md).
+
+| # | Decision | Owner | Blocks | Status |
+|---|---|---|---|---|
+| 1 | Ephemeris file set and coverage range (G-C1) | Operator | INP-1 acceptance, phase 1 | Settled: 1800–2399 installed; whether earlier births are needed is open-questions C1 |
+| 2 | Node model and retrograde semantics; apparent vs true positions; dasha year length (G-C3, G-C12, G-C13, G-D4) | Reviewer, matched to JHora settings | NFR-1 fixtures (the code supports every option) | Open: B1. Retrograde follows the node model; apparent vs true is settled by the first reference chart |
+| 3 | Dignity precedence and friendship basis; yuddha winner; gandanta and sandhi arcs (G-C5…G-C7) | Reviewer | CALC-2 | Open: B2 |
+| 4 | Aspect system, node aspects, conjunction definition (G-R1) | Reviewer | REL-1 | Open: B2 |
+| 5 | Varga spec format (G-V1) | Design | Varga engine | Settled: built (tasks B5.5, D8) |
+| 6 | Functional-role table source (G-R2) | Reviewer | DAS-5 | Later: D (phase 4) |
+| 7 | Adopt the modularity additions M1–M8 into design §7 | Operator | Engine skeleton | Settled: adopted and built |
+| 8 | Shadbala component spec (G-S2); PAN-3 conventions (G-PN2) | Reviewer + design | Phase 4 | Proposed deferral: C4 |
 
 Once decisions 1, 2, 5 and 7 are made, layers L0–L2 and most of L3 can start, with condition and REL-1 following decisions 3 and 4.

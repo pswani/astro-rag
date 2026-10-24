@@ -360,6 +360,8 @@ Design [§22](../design/design.md#22-requirements-traceability) maps every requi
 
 ## 11. Open questions
 
+> The current, consolidated list with answers is [open-questions.md](open-questions.md); this table is kept for history.
+
 | # | Question | Blocks |
 |---|---|---|
 | 1 | Which BPHS edition/translation and which BNN edition are licensed for ingestion? | Phases 2, 5 |
