@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Date** | 2026-10-24 |
+| **Date** | 2026-10-25 |
 | **Replaces** | the question lists in [requirements.md](requirements.md) §11, [memory.md](memory.md) §8, [design.md](../design/design.md) §23 and [calc-review.md](../design/calc-review.md) §5, which now point here |
 | **How to answer** | Write in the **Your answer** lines (or reply in chat). Part B can be sent to the astrologer as it is. Where a question has a recommendation, "OK" accepts it |
 
@@ -10,29 +10,51 @@ Every question below was checked for three things: it needs a person (code or a 
 
 ## Summary
 
-| # | Question | Who | Needed by | Recommendation |
-|---|---|---|---|---|
-| **A1** | Who reviews the astrology, and which software do they use? | You | Phase-1 exit; essential by phase 3 | Name one person now |
-| **A2** | Which BPHS edition do you have? | You (with the reviewer) | Phase 2; "ontology reviewed" | The edition the reviewer cites |
-| **A3** | What machine runs this, and may chart facts go to an API model? | You | Private store (F3) now; phase 2 | Mac + `api` mode allowed |
-| **A4** | Will anyone but you run or receive this system? | You | Before any distribution | No |
-| **B1** | Settings of the reviewer's reference software | Reviewer | Phase-1 exit (accuracy check) | — |
-| **B2** | Eleven interpretation conventions (dignity, combustion, war, gandanta…) | Reviewer | Phase-1 exit | Current defaults |
-| **B3** | Ontology review | Reviewer | Phase-1 exit | — |
-| **C1–C5** | Confirm five proposed defaults | You | Various | As proposed |
-| **D** | Later questions, no answer needed yet | — | Phases 4–7 | — |
+**RAG** column: ★ = significant for the RAG pipeline (ingestion, tagging, retrieval, cited answers); ☆ = minor for it; blank = can wait if the RAG pipeline is the focus. See the next section.
+
+| # | Question | Who | Needed by | Recommendation | RAG |
+|---|---|---|---|---|---|
+| **A1** | Who reviews the astrology, and which software do they use? | You | Phase-1 exit; essential by phase 3 | Name one person now | ★ (part 1) |
+| **A2** | Which BPHS edition do you have? | You (with the reviewer) | Phase 2; "ontology reviewed" | The edition the reviewer cites | ★ |
+| **A3** | What machine runs this, and may chart facts go to an API model? | You | Private store (F3) now; phase 2 | Mac + `api` mode allowed | ★ |
+| **A4** | Will anyone but you run or receive this system? | You | Before any distribution | No | ☆ |
+| **B1** | Settings of the reviewer's reference software | Reviewer | Phase-1 exit (accuracy check) | — | |
+| **B2** | Eleven interpretation conventions (dignity, combustion, war, gandanta…) | Reviewer | Phase-1 exit | Current defaults | |
+| **B3** | Ontology review | Reviewer | Phase-1 exit | — | ★ (names only) |
+| **C1–C5** | Confirm five proposed defaults | You | Various | As proposed | |
+| **D** | Later questions, no answer needed yet | — | Phases 4–7 | — | ★ (phase-2 evaluation targets only) |
+
+## If you focus on the RAG pipeline
+
+The RAG pipeline is phase 2 (design §20): ingest one BPHS edition (parse, OCR, verse chunks, locators, tagging), index it, answer concept questions with citations, and measure retrieval and grounding. In order of impact:
+
+| Order | Question | Why it matters for RAG |
+|---|---|---|
+| 1 | **A2** BPHS edition and its form | It *is* the corpus. The form decides the hardest engineering: a text PDF needs no OCR, a scan needs Devanagari OCR and a quality gate. The edition decides the verse numbering every citation uses. Whether Sanskrit is indexed decides chunking and translation–verse alignment |
+| 2 | **A3** API use and your machine | Four RAG steps use an LLM: tagging passages at ingestion, planning the query, writing the cited answer, checking each claim against its passage. "API allowed" or "local only" decides the model setup and the realistic answer quality. The machine decides whether local embedding, reranking and LLMs are practical |
+| 3 | **A1 part 1** Who reviews | The golden question set (EVAL-2: 50–200 questions with expected sources) is built with an astrologer in phase 2. Without it, retrieval quality can only be measured on questions we write ourselves. The reviewer also spot-checks verse alignment and tags |
+| 4 | **B3, names only** Alias review | Names drive the tagging of every passage and the rewriting of every query. A wrong or missing alias means a passage is never found, or the wrong one is. The attribute values in B3 can wait |
+| 5 | **D: phase-2 evaluation targets** | Phase 2 exits on concept and alias evaluations "at target" and recorded baselines for EVAL-2/3/5. Targets are set at phase start (requirements §7), so they are needed when phase 2 begins. A first proposal can come from us once the golden set exists |
+| minor | **A4** Distribution | If the answer is no, there is one private index, and licence filtering stays a recorded field, not a second build |
+
+**Can wait while the focus is RAG:**
+- **A1 part 2, B1, B2:** they decide chart calculations and the accuracy check against the reviewer's software, not retrieval. The calculations already run on provisional defaults.
+- **B3 values:** exaltation degrees and the like are used by calculations, not by search.
+- **C1–C5:** birth-date range, memory retention, remedies, Shadbala and phase-7 order belong to chart readings, memory (phase 3) or later phases.
+- **The rest of D:** the modern authors (phase 6) and the BNN edition (phase 5) are RAG content too, but for later corpora.
 
 ---
 
 ## A. For you, now
 
-### A1. Who is the reviewer, and which software do they use? *(was requirements Q3)*
+### A1. Who is the reviewer, and which software do they use? *(was requirements Q3)* — ★ RAG: part 1
 
 An astrologer has to:
 - **sign off on the ontology** (the 257 entities, their names and values);
 - **settle the conventions** in Part B;
 - **export about 30 reference charts** from their software, for the accuracy check;
-- later, **review rule cards** (phase 3: career, marriage, education) and the golden question set.
+- **build the golden question set** with us (phase 2: 50–200 questions with the passages a good answer must cite);
+- later, **review rule cards** (phase 3: career, marriage, education).
 
 A rule card cannot become executable without a reviewer (ING-5). That is the project's main protection against invented or misremembered rules.
 
@@ -44,7 +66,7 @@ A rule card cannot become executable without a reviewer (ING-5). That is the pro
 
 **Your answer:**
 
-### A2. Which BPHS edition do you have? *(was requirements Q1, reframed)*
+### A2. Which BPHS edition do you have? *(was requirements Q1, reframed)* — ★ RAG
 
 Phase 2 ingests one edition of Brihat Parashara Hora Shastra, and the ontology cites it.
 
@@ -59,7 +81,7 @@ Phase 2 ingests one edition of Brihat Parashara Hora Shastra, and the ontology c
 
 **Your answer:**
 
-### A3. Your machine, and whether an API model may be used
+### A3. Your machine, and whether an API model may be used — ★ RAG
 
 1. **Which machine will run the system** (Mac with Apple Silicon? how much memory?)
    - The private store keeps its key in the macOS Keychain. Elsewhere it uses a locked-down key file.
@@ -72,7 +94,7 @@ Phase 2 ingests one edition of Brihat Parashara Hora Shastra, and the ontology c
 
 **Your answer:**
 
-### A4. Will anyone other than you run or receive a copy of this system? *(was requirements Q4, reframed)*
+### A4. Will anyone other than you run or receive a copy of this system? *(was requirements Q4, reframed)* — ☆ RAG: minor
 
 The old question asked whether to license Swiss Ephemeris under the AGPL or commercially. That decision only matters if the software is distributed. The requirements describe a single-operator tool on your machine (requirements §2.2), and private use is fine under the AGPL. The same answer settles whether books you own but may not redistribute can be indexed (ING-7).
 
@@ -120,7 +142,7 @@ The easiest answer is a screenshot of the software's calculation preferences.
 
 **Your answer:**
 
-### B3. Ontology review
+### B3. Ontology review — ★ RAG: the names
 
 Run `astro ontology review-pack --out pack.md`. It lists every entity with its names and values in one document. Please check:
 - **values against your BPHS edition** (exaltation degrees, moolatrikona ranges, friendships), noting chapter and verse;
@@ -157,7 +179,7 @@ Listed so nothing is lost. Each will be raised again when its phase starts.
 | Which relations count as "linked" in BNN (lineage decision, calc-review G-B1) | BNN reviewer | 5 |
 | Source for functional benefics and malefics per Lagna. Sources disagree; Laghu Parashari is the usual table (calc-review G-R2) | Reviewer | 4 |
 | Lunar-calendar conventions (samvatsara cycle, adhika and kshaya month naming, ritu, ayana), if C4 is not accepted (calc-review G-PN2) | Reviewer | 4 |
-| Evaluation targets for each phase (requirements §7) | You + reviewer | Start of each phase |
+| ★ Evaluation targets for each phase (requirements §7). For a RAG focus, the phase-2 targets are needed when phase 2 starts | You + reviewer | Start of each phase |
 
 ---
 
