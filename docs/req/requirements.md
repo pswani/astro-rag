@@ -2,13 +2,15 @@
 
 | | |
 |---|---|
-| **Status** | Baseline (rev 3, input scope revised) |
-| **Date** | 2026-10-18 |
+| **Status** | Baseline (rev 4, source-first analysis; expert review optional) |
+| **Date** | 2026-10-26 |
 | **Supersedes** | `rag-cl.md` and `rag-gpt.md` (both removed; see git history) |
 | **Review log** | [review.md](review.md): conflicts resolved, rabbit holes removed, ID mapping |
 | **Extensions** | [memory.md](memory.md): what the application remembers (refines AGT-5, AGT-6, QRY-6, NFR-2, NFR-6) |
 | **Memory** | [memory.md](memory.md): memory stores, use cases and MEM-* requirements (refines AGT-5, QRY-6, NFR-6) |
-| **Design** | [design.md](../design/design.md) (rev 5; traces every requirement in §22) |
+| **Design** | [design.md](../design/design.md) (rev 7; traces every requirement in §22) |
+| **Source-first** | [source-first.md](../design/source-first.md): why expert review is optional, and how extracted conditions are verified |
+| **Open questions** | [open-questions.md](open-questions.md) |
 
 This document says **what** the system must do and **how acceptance is shown**. The design says **how** it is built. Frameworks, database products, model names, chunk sizes and retrieval counts are design decisions, not requirements. Every requirement has a stable ID that design sections, rule cards, tests and evaluation cases can refer to.
 
@@ -215,11 +217,11 @@ It also answers concept, source-comparison and story questions without a persona
 
 | ID | Requirement | Pri | Ph | Acceptance |
 |---|---|---|---|---|
-| KNW-1 | **Entity reference** (ontology) for: 9 grahas, 12 rashis, 12 bhavas, 27 nakshatras (+ Abhijit variant) and 108 padas, 30 tithis, 7 varas, 27 nitya yogas, 11 karanas, vargas, yogas/doshas, dasha systems, upagrahas and special lagnas, karaka schemes per method, deities, topics and methods. Each entity has aliases in Sanskrit, IAST, Devanagari, English and Hindi. Regional-language aliases are S, phase 6. | M | 1 | Ontology reviewed by an astrologer. |
+| KNW-1 | **Entity reference** (ontology) for: 9 grahas, 12 rashis, 12 bhavas, 27 nakshatras (+ Abhijit variant) and 108 padas, 30 tithis, 7 varas, 27 nitya yogas, 11 karanas, vargas, yogas/doshas, dasha systems, upagrahas and special lagnas, karaka schemes per method, deities, topics and methods. Each entity has aliases in Sanskrit, IAST, Devanagari, English and Hindi. Regional-language aliases are S, phase 6. | M | 1 | Ontology integrity checks pass, and every value cites the registered edition (operator or astrologer). |
 | KNW-2 | **Graha attributes:** nature, gender, element, guna, varna, karakatva, body parts, diseases, professions, relatives, dignities (with degrees), moolatrikona, own signs, special aspects, dig bala, natural friendships, maturity age, deity, colour, metal, gem, grain, day, direction, mantras. Disputed values carry their source. | M | 1 | — |
 | KNW-3 | **Rashi attributes** (lord, modality, element, gender, direction, body part, classifications); **bhava attributes** (significations, karakas, groupings: kendra, trikona, dusthana, upachaya, maraka, moksha; bhavat-bhavam); **nakshatra attributes** (boundaries, lord, deity, symbol, shakti, gana, yoni, nadi, varna, naming syllables). | M | 1 | — |
 | KNW-4 | **Panchanga element meanings:** results of birth in each tithi, vara, nitya yoga and karana; tithi groups (Nanda, Bhadra, Jaya, Rikta, Purna) and deities. | M | 2 | — |
-| KNW-5 | **Rule families**, each as rule cards linked to source passages. Core (Parashari, phases 3–4): (a) graha in rashi; (b) graha in bhava; (c) bhava lord in bhava (12×12); (d) graha in nakshatra; (e) conjunctions; (f) aspects; (g) a **curated, expert-chosen set of 20–30 yogas/doshas** with their cancellations; (h) dasha and antardasha results; (i) transit results. Core (BNN, phase 5): (j) BNN combinations and transit triggers. Review is ordered by topic: phase 3 covers the cards reached by the career, marriage and education topic maps, and the remaining Core cards are reviewed by the end of phase 6 (design §10.7). Expansion (phase 7): (k) KP house-group rules per event; (l) Jaimini, Tajika, compatibility, muhurta rules. More yogas are added only through the review workflow, never in bulk. | M | 3–6 | Each family has positive, negative and `unknown` fixtures (EVAL-4). |
+| KNW-5 | **Rule families**, drawn from registered sources. Single-factor families are carried by **typed factor tags** on the passages that state them: (a) graha in rashi; (b) graha in bhava; (c) bhava lord in bhava (12×12); (d) graha in nakshatra; (e) conjunctions; (f) aspects; (h) dasha and antardasha results; (i) transit results. Compound conditions are **rule cards**: (g) a curated set of 20–30 yogas/doshas with their cancellations, conditions stated inside verses, and multi-factor dasha or transit rules. Core (BNN, phase 5): (j) BNN combinations and transit triggers. Expansion (phase 7): (k) KP house-group rules per event; (l) Jaimini, Tajika, compatibility, muhurta rules. Yogas are added only from registered sources, never in bulk from model knowledge. | M | 2–6 | Each verified tag and card has generated positive, negative and `unknown` fixtures (EVAL-4); extraction accuracy meets EVAL-11. |
 | KNW-6 | **Topic maps** per Core method for: career, wealth, marriage/relationships, children, education, health (traditional framing), property, siblings, parents, foreign travel/residence, spirituality. (Vehicles and litigation are S.) Topic maps may surface additional prerequisites found during retrieval. | M | 3 | Career query shows a dependency checklist. |
 | KNW-7 | **Puranic and devotional narratives** at episode level, with work, recension, book/canto, chapter, verse range, edition and variants. Store separately: what the story says; who links it to a graha, nakshatra or theme; and any practice or prediction derived from it. Story evidence alone never justifies a personal prediction. | M | 6 | — |
 | KNW-8 | **Remedies** (mantra, stotra, dana, vrata, yantra, gemstone, rudraksha, temple), each with source, prerequisites, **contraindications** (e.g., do not wear the gem of a functional malefic), and any efficacy claim attributed to its source. | S | 7 | — |
@@ -237,8 +239,8 @@ It also answers concept, source-comparison and story questions without a persona
 | ING-2 | OCR scanned pages in Devanagari and Latin scripts. Score quality per page, and send low-quality pages to a VLM or a review queue instead of indexing them. | M | 2 | — |
 | ING-3 | Chunk by content unit: verse (with translation and commentary), section, story episode, table (with header), rule card, remedy, worked case. Keep links between a rule, its prerequisites, exceptions, tables and explanations. | M | 2 | An exception stays reachable when its rule is retrieved. |
 | ING-9 | Keep stable locators (printed page, verse, chapter) distinct from file indices, and keep verified translation/commentary alignment. | M | 2 | Locators still resolve after reindexing. |
-| ING-4 | Tag every chunk with ontology entity IDs, topics, school, lineage, method variant, reference frame, chart scope (varga), rule family and evidence class. | M | 2 | — |
-| ING-5 | Extract candidate rule cards from text with an LLM. A rule card becomes executable only after review by an expert for that method. Ambiguous prose stays as source text; machine-proposed cards, generated summaries and teaching analogies are never cited as source evidence. | M | 3 | A draft card cannot enter the approved predicate set or be cited. |
+| ING-4 | Tag every chunk with ontology entity IDs, topics, school, lineage, method variant, reference frame, chart scope (varga), rule family and evidence class, and with **typed factor tags** (e.g. `lord_in_bhava:7:12:lagna`) where a verse is about one chart factor. Factor tags go through the ING-5 verification. | M | 2 | Factor-confusion fixtures (RET-3) pass on the tags. |
+| ING-5 | Extract factor tags, in-verse conditions and rule cards from registered source text with an LLM. An extracted item becomes usable only after it passes **automated verification** (independent extraction passes agree; every entity it names is in the verse; deterministic parse and chapter-structure checks where they apply; the engine finds charts that satisfy and fail it; a back-translation check) or is resolved by the operator or an expert. Answers label each item machine-verified, operator-verified or expert-reviewed. Expert review is optional and upgrades the label. Ambiguous prose stays as source text; machine-proposed items, generated summaries and teaching analogies are never cited as source evidence: answers cite the verse. | M | 2–3 | A draft or queued item cannot be evaluated or cited; seeded extraction errors are caught (EVAL-11). |
 | ING-6 | Ingestion is idempotent and incremental and builds a versioned index. Updates and withdrawals propagate to passages, rule cards, links and caches. Ontology changes trigger re-tagging. | M | 2 | Unchanged re-ingestion duplicates nothing; withdrawn evidence disappears from new queries. |
 | ING-7 | Never index sources whose rights status is `restricted` into anything distributed. | M | 2 | — |
 
@@ -257,19 +259,19 @@ It also answers concept, source-comparison and story questions without a persona
 
 | ID | Requirement | Pri | Ph | Acceptance |
 |---|---|---|---|---|
-| APP-1 | Evaluate the conditions of every rule card in the planned rule families against chart facts deterministically. The LLM never decides whether a rule or yoga is present. | M | 3 | — |
+| APP-1 | Match the chart's factors to verified factor tags, and evaluate the conditions of every verified rule card and in-verse condition, against chart facts deterministically. The LLM never decides whether a rule, yoga or condition holds; a condition that is not verified is reported as unchecked. | M | 3 | An answer asserting an unchecked condition's outcome is rejected by the evidence checker. |
 | APP-2 | Applicability has three states: `satisfied`, `not_satisfied`, `unknown`. Missing degrees, an unknown birth time, a `sensitive` fact or an uncomputed feature give `unknown`, never `not_satisfied`. | M | 3 | Positive, negative and unknown fixtures pass. |
 | APP-3 | Evaluate the cancellation, qualification and exception rules linked to each satisfied rule, to a bounded depth. Keep the original formation result alongside the qualified one. Detect cycles and report them as `unknown`. | M | 3 | Cancellation and cyclic-dependency fixtures. |
 | APP-4 | For dasha and transit questions, apply the three-step test: does the natal chart **promise** the event, does the **dasha** activate it, does a **transit** trigger it? Report each step separately. | M | 4 | EVAL-7. |
-| APP-5 | Log the facts and rule-card versions used, the outcome of each condition, and why each candidate rule was accepted, rejected or left unknown. | M | 3 | A reviewer can replay a decision without model reasoning. |
+| APP-5 | Log the facts, factor matches and rule-card versions used, the outcome of each condition, the verification record of each item (gates, models, who resolved it), and why each candidate rule was accepted, rejected or left unknown. | M | 3 | Anyone can replay a decision without model reasoning. |
 
 ### 5.13 Retrieval (RET)
 
 | ID | Requirement | Pri | Ph | Acceptance |
 |---|---|---|---|---|
-| RET-1 | Retrieval is **hybrid**: (a) fetch the passages linked to applicable rule cards by ID; (b) entity-filtered lexical + semantic search; (c) exact lookup by verse, entity or rule ID; (d) ontology expansion (nakshatra lord, dispositor, house lord, karaka). | M | 3 | Exact verse, transliterated alias and numeric conditions each retrieve correctly. |
+| RET-1 | Retrieval is **hybrid**: (a) fetch the passages linked to applicable rule cards by ID, and the passages whose verified factor tags match the chart's factors; (b) entity-filtered lexical + semantic search; (c) exact lookup by verse, entity or rule ID; (d) ontology expansion (nakshatra lord, dispositor, house lord, karaka). | M | 3 | Exact verse, transliterated alias and numeric conditions each retrieve correctly. |
 | RET-2 | Filters on entities, school, method variant, doc type, evidence class and licence run **inside** the search, not after it. | M | 2 | — |
-| RET-3 | Retrieval for a chart factor must not confuse factors (e.g., "Saturn in the 10th" vs "10th lord in Saturn's sign" vs "10th from the Moon"). | M | 2 | Factor-confusion fixtures. |
+| RET-3 | Retrieval for a chart factor must not confuse factors (e.g., "Saturn in the 10th" vs "10th lord in Saturn's sign" vs "10th from the Moon", or "7th lord in the 12th" vs "12th lord in the 7th"). | M | 2 | Factor-confusion fixtures, including mirrored lord placements. |
 | RET-4 | Aliases are normalized to entity IDs before search: queries that differ only by alias (Shani / Sani / Saturn / शनि) return the same results. | M | 2 | Alias fixture returns identical top-k. |
 | RET-5 | Retrieve passages for each active dasha lord and sub-lord in the context of its natal condition, and for each transit event in the window. | M | 4 | — |
 | RET-6 | Explicitly search for **contrary evidence**: mitigations, cancellations and opposing readings for each main finding. | M | 3 | Benchmark includes the exception and the adverse reading. |
@@ -286,7 +288,7 @@ It also answers concept, source-comparison and story questions without a persona
 |---|---|---|---|---|
 | AGT-1 | Calculation, rule evaluation and filtering are deterministic tools, not LLM calls. The LLM plans, retrieves via tools and synthesizes. | M | 3 | — |
 | AGT-2 | When more than one method is selected, each method is analysed only over its own evidence bundle before any comparison. | M | 5 | — |
-| AGT-3 | The **evidence bundle** is a typed, machine-readable object containing: resolved question scope; input and chart provenance; method and calculation profiles; relevant facts, periods and events (with sensitivity); applicable and `unknown` rules with qualifiers; contrary evidence; passages with excerpts and precise locators; cases; gaps; and versions. It is produced independently of answer generation. | M | 3 | Schema validator rejects dangling references and missing per-method records. |
+| AGT-3 | The **evidence bundle** is a typed, machine-readable object containing: resolved question scope; input and chart provenance; method and calculation profiles; relevant facts, periods and events (with sensitivity); applicable and `unknown` rules with qualifiers; factor matches; in-verse conditions with their results (`true`, `false`, `unknown` or `unchecked`); the verification label of each item; contrary evidence; passages with excerpts and precise locators; cases; gaps; and versions. It is produced independently of answer generation. | M | 3 | Schema validator rejects dangling references and missing per-method records. |
 | AGT-5 | Store per-person birth data, profiles and computed charts so that follow-ups need no re-entry (UC-8). | M | 3 | — |
 | AGT-6 | Treat retrieved text and imported files as data, never as instructions. Tool permissions and rule publication are outside the model's control. | M | 2 | Prompt-injection fixture cannot change tools, publish rules or read another person's chart. |
 
@@ -325,17 +327,18 @@ It also answers concept, source-comparison and story questions without a persona
 | ID | Requirement | Pri | Ph |
 |---|---|---|---|
 | EVAL-1 | **Calculation fixtures:** positions, Lagna, nakshatra/pada, panchanga boundaries, vargas, dasha balance and sub-periods, transit events. Edge cases: 0°/360° wrap, sector boundaries, DST folds and gaps, documented historical time standards, dates outside the former product range, worldwide coordinate input, calendar conversions, feature-specific engine/data limits, high latitudes, retrograde re-crossings, unknown birth time. | M | 1 |
-| EVAL-2 | **Golden question set**, built with an astrologer: 50–200 questions across the Core use cases, covering aliases, conflicts, missing inputs and ambiguous terms. | M | 2 |
+| EVAL-2 | **Golden question set** built from the registered sources: 50–200 questions across the Core use cases, each with the passages a correct answer must cite, covering aliases, conflicts, missing inputs and ambiguous terms. Built by the operator; an astrologer's notes are added when available. | M | 2 |
 | EVAL-3 | **Retrieval metrics:** recall@k for required rule families and for exceptions/contrary passages, MRR, nDCG, and cross-method contamination rate. | M | 2 |
-| EVAL-4 | **Applicability tests:** positive, negative and `unknown` cases for every rule card, including cancellations. | M | 3 |
+| EVAL-4 | **Applicability tests:** positive, negative and `unknown` cases for every verified factor tag, rule card and in-verse condition, including cancellations, generated by the engine during verification. | M | 3 |
 | EVAL-5 | **Answer grounding:** faithfulness, citation entailment, correct chart facts, correct method labels, stated uncertainty, and no invented rules or dates. | M | 2 |
-| EVAL-6 | **Chart readings** of reference charts, scored by an expert on a rubric covering factor coverage and correctness. | M | 3 |
+| EVAL-6 | **Chart readings** of reference charts, scored on a rubric: factor coverage and faithfulness to the cited sources (by the operator), and astrological correctness (by an expert when one is available; otherwise recorded as not assessed). | M | 3 |
 | EVAL-7 | **Timing questions:** the correct dasha chain and transit events are identified, and promise/period/trigger are reported separately. | M | 4 |
 | EVAL-9 | **End-to-end scenarios**, each recording expected facts, required evidence families, accepted abstentions and requirement IDs: a chart-backed career question; a timing window crossing a dasha boundary; BNN vs Parashari with a real disagreement; a modern-author mapping; a Puranic variant; an uncertain-time chart crossing a boundary; a draft rule with an exception; budget exhaustion; a failed calculation tool; a source withdrawal; a prompt-injection passage. | M | 3–6 |
+| EVAL-11 | **Extraction accuracy** on an operator-labelled sample (at least 100 factor tags across families, and every compound card's conditions): exact-match rate of verified items, direction and number errors among verified items (target 0), gate catch rate on seeded errors, queue rate per extraction model. | M | 2 |
 | EVAL-10 | Keep calculation, extraction, retrieval, applicability and answer results separate, so a failure is attributable to one layer. Keep illustrative cases separate from any test data. | M | 2 |
 | EVAL-8 | Outcome-prediction evaluation, if ever pursued, is prospective, uses held-out persons and predefined outcomes, and is kept separate from retrieval quality. | C | — |
 
-**Phase exit:** a phase is accepted when its **M** items pass, its EVAL items meet targets agreed with the expert reviewer and recorded in the release notes, and earlier phases do not regress. Targets are set at the start of each phase, not deferred to a final production gate.
+**Phase exit:** a phase is accepted when its **M** items pass, its EVAL items meet targets set by the operator (with the expert reviewer, when there is one) and recorded in the release notes, and earlier phases do not regress. Targets are set at the start of each phase, not deferred to a final production gate.
 
 ## 8. Safety and responsible use (SAFE)
 
@@ -350,7 +353,7 @@ It also answers concept, source-comparison and story questions without a persona
 ## 9. Constraints and assumptions
 
 - Calculation uses Swiss Ephemeris (or a wrapper on it). Other technology choices belong to the design.
-- An astrologer reviewer is available from Phase 1 for the ontology, rule cards, topic maps and the golden set. A BNN-competent reviewer is available by Phase 5.
+- Authority comes from registered sources and computed facts. An astrologer reviewer is **optional**: when available, they upgrade labels (expert-reviewed), settle queued questions of meaning, score astrological correctness and choose calculation conventions. Nothing in phases 1–6 is blocked without one (design [source-first.md](../design/source-first.md)).
 - **BNN** means Bhrigu Nandi Nadi (R. G. Rao). Rao's text supports a distinct BNN relation model; it does not establish a single universal BNN algorithm, so BNN rules carry lineage (SCH-BNN-3).
 - Catalog availability or a free download is not permission to ingest or redistribute an edition.
 
@@ -366,7 +369,7 @@ Design [§22](../design/design.md#22-requirements-traceability) maps every requi
 |---|---|---|
 | 1 | Which BPHS edition/translation and which BNN edition are licensed for ingestion? | Phases 2, 5 |
 | 2 | Which 1–2 modern authors are in the Core source set? | Phase 6 |
-| 3 | Who is the expert reviewer for Parashari and for BNN? | Phase 1, Phase 5 exits |
+| 3 | Who is the expert reviewer for Parashari and for BNN? | Nothing since rev 4: an astrologer is optional (open-questions A1) |
 | 4 | Swiss Ephemeris licence: AGPL or commercial. | Distribution only (NFR-7) |
 | 5 | Order of phase-7 bundles. | Phase 7 |
 

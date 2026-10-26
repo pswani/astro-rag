@@ -2,12 +2,13 @@
 
 | | |
 |---|---|
-| **Status** | Baseline (rev 6: phase-1 closure design folded into §4.4, §5.3, §8, §9.1, §16.1, §20, §23) |
-| **Date** | 2026-10-19 |
+| **Status** | Baseline (rev 7: source-first analysis, expert review optional; rev 6 folded in the phase-1 closure) |
+| **Date** | 2026-10-26 |
 | **Requirements** | [requirements.md](../req/requirements.md) and [memory.md](../req/memory.md). Requirement IDs (e.g. `DAS-2`, `MEM-SES-2`) are cited inline; §22 traces every one. |
 | **Supersedes** | `rag-claude.md` (rev 3) and `rag-gpt.md` (both removed; see git history) |
 | **Review log** | [review.md](review.md): conflicts resolved, defects fixed, rabbit holes removed |
 | **Calc review** | [calc-review.md](calc-review.md): build readiness, open gaps and reuse plan for §7 (pending adoption) |
+| **Source-first** | [source-first.md](source-first.md): typed factor tags, automated verification of extracted conditions, expert review optional; refines §2, §5.1, §9.6–§9.7, §10, §11.3, §12–§14, §19–§20 below |
 | **Phase-1 closure** | [phase1-foundations.md](phase1-foundations.md): detailed design of the private store, ontology loader and matcher, source register and calculation eval harness; refines §5.3, §8, §9.1, §16.1 and §20 below |
 
 The requirements say **what** and how acceptance is shown. This document says **how**: architecture, schemas, algorithms, technology and delivery order. Values marked *initial* are starting points that the evaluation suite (§19) is allowed to change.
@@ -20,7 +21,7 @@ The system is a local, single-operator evidence service for an agentic Indian as
 
 1. **Plans** which chart facts and rule families the question depends on, per selected method.
 2. **Computes** those facts deterministically under a pinned calculation profile.
-3. **Evaluates** reviewed rule cards against the facts with three-valued logic.
+3. **Evaluates** verified rule cards and factor tags against the facts with three-valued logic.
 4. **Retrieves** the source passages behind applicable rules, plus factor, timing and contrary evidence.
 5. **Packages** a typed, deterministic **evidence bundle** (§14).
 6. Optionally **generates** a cited answer from that bundle (§13, §14.4).
@@ -36,10 +37,11 @@ The interface is a Python library with a CLI (`astro ask`, `astro person`, `astr
 3. **One ontology ties everything together.** Computation emits ontology IDs, every chunk and rule card is tagged with them, and every query is canonicalized to them (§8, §12.2).
 4. **Attribute, never blend.** Every fact, rule and passage carries its source, school and lineage. Methods meet only in an explicit comparison step (`RET-8`, `OUT-3`).
 5. **Question-driven, not exhaustive.** The dependency plan decides what to compute and evaluate. "Complete" means complete for the declared plan, and gaps are reported (`OUT-8`).
-6. **Unknown is a first-class value.** Missing inputs, sensitive birth-time facts and unreviewed rules yield `unknown`, never a silent `false` (`APP-2`).
+6. **Unknown is a first-class value.** Missing inputs, sensitive birth-time facts and unverified conditions yield `unknown` or `unchecked`, never a silent `false` (`APP-2`).
 7. **The evidence bundle is deterministic.** Given a recorded plan, a chart and a knowledge release, the bundle is reproducible without any LLM call. LLMs act before the bundle (planning) and after it (analysis, synthesis), never inside it.
 8. **Evaluate from week 1.** Calculation, applicability, retrieval and answers are measured separately on every change (§19).
-9. **Build the simplest thing that meets the requirement.** No component is added for a capability the requirements do not ask for (§21).
+9. **Sources and computation are the authority; an expert improves, never gates.** Extracted conditions are usable once automated verification passes, and answers say how each item was verified (machine, operator or expert). An expert review upgrades the label.
+10. **Build the simplest thing that meets the requirement.** No component is added for a capability the requirements do not ask for (§21).
 
 ## 3. Key decisions
 
@@ -56,6 +58,7 @@ The interface is a Python library with a CLI (`astro ask`, `astro person`, `astr
 | D9 | Privacy modes | `local` (no egress) and `api` (LLM calls allowed; **raw birth data and the unscrubbed question never leave the machine**) | A single API-only mode (violates NFR-5); trusting the API with birth data (violates NFR-6). |
 | D10 | Ingestion idempotency | **Deterministic point IDs** from passage locators + content hashes in an ingest table | LangChain `index()`/`RecordManager`: an extra dependency for something deterministic IDs already give. |
 | D11 | Tracing | Run traces stored in the encrypted DB; LangSmith/Langfuse **off by default**, allowed only in `api` mode behind a redaction callback | Cloud tracing by default (would export personal data). |
+| D13 | Who makes extracted rules usable | **Automated verification** (independent extraction passes, entity and parse checks, chapter structure, engine-generated fixtures, back-translation); operator resolves direction and number questions; expert review optional ([source-first.md](source-first.md)) | Mandatory expert review of every card: about 1,100–1,400 cards and 90–120 reviewer-hours before topics could be answered |
 | D12 | Chart input | Birth data is the Core path. Structured import is a phase-7 adapter. **No image extraction** | Layout-specific image adapters (requirements R1). |
 
 ## 4. Architecture
@@ -76,7 +79,7 @@ flowchart TB
     PARSE --> CHUNK[Unit chunker + locators]
     CHUNK --> TAG[Alias matcher + LLM tagger]
     TAG --> IDX[(Qdrant kb_n)]
-    CHUNK --> EXT[Rule-card extractor] --> CAND[rules/_candidates]
+    TAG --> EXT[Factor, condition and card extractor] --> VER[Verification gates] --> CAND[rules/ and factor tags]
   end
   subgraph Online["Query (LangGraph)"]
     REQ[EvidenceRequest] --> NORM[Normalize inputs + scrub PII]
@@ -108,7 +111,8 @@ flowchart TB
 | Normalizer | Validates the request, resolves place and time zone, records precision, scrubs PII from free text (§6) | No |
 | Planner | Intent, topics, methods, whose chart, as-of/window, missing inputs → dependency plan (§11) | Yes (skipped when the request is structured) |
 | Calculation service | Facts, periods, events, sensitivity, under a pinned profile (§7) | No |
-| Rule engine | Three-valued evaluation, qualification closure, decision log (§10) | No |
+| Rule engine | Factor matching, three-valued evaluation of verified cards and in-verse conditions, qualification closure, decision log (§10) | No |
+| Verifier (ingestion) | Two extraction passes and the gates G1–G7; queue for failures (§10.6) | Partly (extraction and back-translation) |
 | Retrieval | Rule-linked, factor, timing, contrary and route-specific search; coverage loop; context assembly (§12) | No |
 | Bundle builder | Typed evidence bundle with integrity checks (§14) | No |
 | Method analyst | Interprets one method's bundle into structured claims (§13.3) | Yes |
@@ -138,7 +142,7 @@ All processes run on the operator's machine: the Python application, Qdrant (Doc
 ontology/*.yaml            canonical vocabulary and facts (§8)
 profiles/calc/*.yaml       calculation profiles (§7.1)
 profiles/method/*.yaml     method profiles + capability declarations (§7.10)
-rules/<school>/<family>/*.yaml   reviewed rule cards (§10)
+rules/<school>/<family>/*.yaml   verified rule cards (§10)
 rules/_candidates/         machine-proposed cards awaiting review
 topic_maps/*.yaml          topic → factors per method (§11.3)
 sources/register.yaml      acquisition register (§9.1)
@@ -169,7 +173,8 @@ evals/                     fixtures, golden set, scenarios (§19)
 | Computed, natal | Positions, Lagna, nakshatra/pada, vargas, lordships, aspects, strengths, BNN relations, birth panchanga | Calculation service (§7) | One wrong degree invalidates a reading; LLMs cannot calculate. |
 | Computed, time-varying | Dasha tree, active periods, transit events, named transit states | Calculation service, evaluated for the as-of date or window | Must never be retrieved from prose. |
 | Canonical facts | Saturn exalted at Libra 20°; Jupiter aspects 5/7/9; Ketu's Vimshottari period is 7 years | Ontology (§8) | Small, closed and stable; retrieval only adds error. |
-| Rules | Gajakesari; 7th lord in 12th; Saturn–Venus antardasha; Jupiter over natal Venus (BNN) | Rule cards (§10) | Exact conditions must be checked by code. |
+| Single-factor rules | 7th lord in the 12th; Saturn in the 10th; Jupiter in Cancer | Verified **factor tags** on the passages that state them (§9.6, §10.1) | The computed fact selects the verse; no rule needs authoring. |
+| Compound rules | Gajakesari and its cancellations; conditions inside a verse; Jupiter over natal Venus (BNN) | Verified **rule cards** (§10) | Exact conditions must be checked by code. |
 | Routing knowledge | Career → 10th, 10th lord, Saturn, D10 (Parashari); Saturn and its trines (BNN) | Topic maps (§11.3) | Turns a question into dependencies. |
 | Interpretive and narrative | Verses, commentary, stories, remedies, worked cases | Passage index (§9, §12) | Large, nuanced, contradictory; this is what retrieval is for. |
 
@@ -418,13 +423,13 @@ A method profile (`profiles/method/<id>.yaml`) declares the school and lineage, 
 
 - **Cache:** facts, dasha trees and event searches are cached in the encrypted store, keyed by `(chart ID, feature, parameters, engine version)`.
 - **Determinism** (`CALC-9`): pinned ephemeris files, tzdata and library versions; no wall-clock reads except the recorded `as_of`; floating-point outputs rounded to 1e-9° before hashing. A re-run fixture compares byte-for-byte.
-- **Accuracy** (`NFR-1`): 30 reference charts exported from Jagannatha Hora by the reviewer, under matched settings, form the ground truth. They cover the EVAL-1 edge cases. PyJHora is used as an additional oracle in CI only, never shipped.
+- **Accuracy** (`NFR-1`): 30 reference charts exported from Jagannatha Hora (by the operator, or the reviewer when there is one), under matched settings, form the ground truth. They cover the EVAL-1 edge cases. PyJHora is used as an additional oracle in CI only, never shipped.
   - Tolerances: planets ≤ 10″; Lagna ≤ 30″; dasha boundaries ≤ 2 days.
   - Discrete facts must match exactly unless the value lies within the tolerance of a boundary, in which case the fixture records the discrepancy as `boundary`.
 
 ## 8. Ontology (`KNW-1…4`, `KNW-11`, `KNW-12`)
 
-Hand-written, reviewed with the astrologer, version-controlled, and loaded into Pydantic models at start-up (well under 10 MB).
+Hand-written from the registered edition, checked by the integrity rules (and by an astrologer when available), version-controlled, and loaded into Pydantic models at start-up (well under 10 MB).
 
 ```yaml
 # ontology/grahas.yaml
@@ -472,7 +477,7 @@ Rules:
 - **Two versions:** the calculation reads a projection of the ontology whose hash (`refdata.version`) keys the fact cache, so alias edits do not invalidate facts; `ontology_version` hashes everything and goes on passages and releases.
 - **Confusables are separate entity types** (`KNW-12`): `nitya_yoga:*` vs `yoga:*`; `koota:nadi` vs `school:bnn` / `school:nadi_other`; `rashi:*` vs `bhava:*`; `nakshatra:*` (sectors) — individual stars are not modelled.
 - **Calculation reference data** (dasha years, varga rules, bindu tables) is read by the calculation service from the ontology, never from the vector index (`KNW-11`).
-- CI validates referential integrity: every ID referenced anywhere resolves, and every disputed value has a source. A file marked `reviewed` cites `<edition_id>:<locator>` sources that resolve in the register (§9.1), so the ontology review also waits on open question 1. Loader, checks and the KNW-12 fixtures: [phase1-foundations.md](phase1-foundations.md) §3.
+- CI validates referential integrity: every ID referenced anywhere resolves, and every disputed value has a source. A file marked `reviewed` cites `<edition_id>:<locator>` sources that resolve in the register (§9.1), so marking it reviewed (by the operator or an astrologer) waits on open question 1. Loader, checks and the KNW-12 fixtures: [phase1-foundations.md](phase1-foundations.md) §3.
 
 ## 9. Sources and ingestion
 
@@ -499,7 +504,7 @@ bphs_santhanam_1984:
   coverage: [ch1-97]
   ocr_condition: good
   verse_pattern: '॥\s*(\d+)\s*॥'
-  reviewer: <astrologer>
+  reviewer: <who checked the parsed text against the book: operator or astrologer>
   status: acquired            # candidate | acquired | parsed | reviewed | published | withdrawn (+ withdrawn_reason)
 ```
 
@@ -513,7 +518,8 @@ No file is parsed until its register entry exists. The Core source set is fixed 
 register check → parse (Docling) → OCR quality gate → unit chunking + locators
   → translation/commentary alignment → tagging → canonical lexical text
   → embed (dense) + sparse → upsert by deterministic ID → ingest table update
-  → (rule-bearing sources) candidate rule-card extraction → rules/_candidates/
+  → (rule-bearing sources) extraction of factor tags, in-verse conditions and cards → verification gates
+  → verified items to the payload and rules/; failures to the queue (§10.6)
 ```
 
 Every stage is resumable per source and per page. Failures go to a dead-letter list with the stage and error (`NFR-10`).
@@ -555,9 +561,10 @@ Passage IDs come from printed locators (chapter.verse, or printed page for prose
 ### 9.6 Tagging and canonical text (`ING-4`)
 
 1. **Alias matcher:** deterministic, longest-match, from ontology `names`.
-2. **LLM tagger:** structured output restricted to ontology IDs (enums generated from the ontology). It covers indirect references ("son of Surya" → Saturn; "lord of the tenth" → `lordship:10`), ambiguous names, the reference frame ("10th from the Moon"), the rule family and the evidence class.
-3. The union is stored in `entities`. The tagger never removes alias-matched IDs. A house mentioned without any reference point is tagged `reference_frame: lagna`, the classical default; text that counts from the Moon, Sun or a planet gets that frame.
-4. **Canonical lexical text** for the sparse index: original text + ASCII-folded IAST transliteration of Devanagari (via `indic-transliteration`) + canonical entity tokens (e.g. `graha_saturn`, `bhava_10`). This makes lexical matching script- and alias-invariant (§12.2).
+2. **Factor tags:** for verses about one chart factor, a typed key such as `lord_in_bhava:7:12:lagna` (vocabulary in [source-first.md](source-first.md) §3.2). Entity sets cannot express direction (the 7th lord in the 12th vs the 12th lord in the 7th), so factor retrieval uses these keys. They are extracted and verified like rule cards (§10.6); only verified keys are indexed.
+3. **LLM tagger:** structured output restricted to ontology IDs (enums generated from the ontology). It covers indirect references ("son of Surya" → Saturn; "lord of the tenth" → `lordship:10`), ambiguous names, the reference frame ("10th from the Moon"), the rule family and the evidence class.
+4. The union is stored in `entities`. The tagger never removes alias-matched IDs. A house mentioned without any reference point is tagged `reference_frame: lagna`, the classical default; text that counts from the Moon, Sun or a planet gets that frame.
+5. **Canonical lexical text** for the sparse index: original text + ASCII-folded IAST transliteration of Devanagari (via `indic-transliteration`) + canonical entity tokens (e.g. `graha_saturn`, `bhava_10`). This makes lexical matching script- and alias-invariant (§12.2).
 
 ### 9.7 Passage payload schema
 
@@ -570,6 +577,9 @@ lineage, method_variant, author, translator
 rule_family     graha_rashi | graha_bhava | lord_bhava | graha_nakshatra | conjunction | aspect | yoga | dosha |
                 dasha | transit | panchanga | bnn_combination | … (phase-7 families)
 rule_ids        rule cards this passage supports
+factor_keys     verified typed factor keys (keyword index); full records in `factors[{key, status, gates}]`
+conditions      in-verse conditions: [{span, predicate_id | null, status}]
+polarity        supportive | adverse | mixed | neutral, tagged_by: llm (ordering and contrary search only)
 links           {exceptions[], prerequisites[], explains[], variant_of}
 reference_frame lagna | chandra | surya | graha:<id> | cusp
 chart_scope     D1 | D9 | … | annual | prashna | two_chart
@@ -578,7 +588,7 @@ entities        {grahas[], bhavas[], rashis[], nakshatras[], tithis[], nitya_yog
                  vargas[], yogas[], dasha_systems[], topics[], lordships[]}
 lang, script
 license         public_domain | licensed | restricted
-review_status   unreviewed | reviewed
+review_status   unreviewed | operator_verified | reviewed   (passage text; extracted items carry their own status)
 generated       bool (summaries; never cited)
 content_hash, parser_version, ocr_quality, embedding_model, ontology_version, ingested_at
 ```
@@ -597,27 +607,29 @@ All filter fields have Qdrant payload indexes (keyword or integer).
 ### 10.1 Rule card (`KNW-5`)
 
 ```yaml
-id: parashari.lord_bhava.7_in_12
-version: 2
-family: lord_bhava
+id: parashari.yoga.neecha_bhanga_raja
+version: 1
+family: yoga
 school: parashari
 lineage: bphs
-topics: [topic:marriage, topic:foreign, topic:expenses]
+topics: [topic:career, topic:wealth]
 chart_scope: D1
 reference_frame: lagna
-when: {op: lord_in_house, lord_of: 7, house: 12}
-modality: tendency                          # tendency | strong | conditional | contested
-polarity: adverse                           # supportive | adverse | mixed | neutral
-interpretation: "<source-attributed paraphrase>"
-qualifiers: [parashari.mod.benefic_aspect_on_7th_lord]
+when: {all: [{op: debilitated, graha: any}, {any: [ … ]}]}   # the conditions as the verse states them
+modality: conditional                       # tendency | strong | conditional | contested
+polarity: supportive                        # supportive | adverse | mixed | neutral
+qualifiers: []
 cancellations: []
 contradicts: []
-source_passages: [bphs_santhanam_1984:24.xx]
-status: reviewed                            # draft | reviewed | rejected | requires_review
-reviewed_by: <astrologer>
-reviewed_at: 2026-…
-fixtures: evals/applicability/parashari/lord_bhava/7_in_12.yaml
+source_passages: [bphs_santhanam_1984:xx.yy]
+status: verified                            # draft | verified | queued | operator_verified | reviewed | rejected
+verification: {gates: {G1: pass, G2: pass, G3: pass, G4: abstain, G5: abstain, G6: pass, G7: pass},
+               extractors: [<model/prompt A>, <model/prompt B>], judge: <model/prompt>}
+reviewed_by: null                           # set when an expert reviews; optional
+fixtures: evals/applicability/parashari/yoga/neecha_bhanga_raja.yaml   # generated by G6
 ```
+
+Single-factor rules ("the 7th lord in the 12th") are **not cards**. They are verified factor tags on the passages that state them (§9.6), matched to the chart's factors by set intersection ([source-first.md](source-first.md) §3). Cards carry compound conditions: yogas and doshas with cancellations, conditions stated inside a verse, multi-factor dasha and transit rules, and BNN combinations. Interpretation is never paraphrased into a card: answers quote the verse.
 
 ```yaml
 id: parashari.yoga.gajakesari
@@ -685,39 +697,32 @@ Decisions are stored with the run. `astro explain <run> <rule>` replays a decisi
 
 The window is cut into segments at every period boundary and event. Each segment records the three layers. Segments where all three support the topic are **candidate periods**; where layers disagree, the disagreement is reported, not resolved. Each layer is reported separately in the bundle and the answer.
 
-### 10.6 Authoring and review workflow (`ING-5`)
+### 10.6 Extraction and verification (`ING-5`)
 
-1. `astro extract <source> --chapters …` runs the rule extractor (LLM, structured output) over reviewed passages and writes candidate cards to `rules/_candidates/` with `status: draft`, the passage IDs and the extractor model.
-2. `astro review render` produces a static HTML review pack per family: card, rendered predicate in plain English, source verse with translation, and generated test charts that satisfy, fail and leave unknown the predicate.
-3. The reviewer accepts, edits or rejects. Accepted cards move to `rules/<school>/<family>/` with `status: reviewed`, `reviewed_by` and fixtures.
-4. CI gates the merge: schema valid; operators known; every `source_passages` ID resolves in the current collection; fixtures exist and pass (`EVAL-4`).
+One pipeline serves factor tags, in-verse conditions and cards ([source-first.md](source-first.md) §5):
 
-At runtime only `reviewed` cards load. Drafts are never evaluated or cited.
+1. `astro extract <source> --chapters …` runs two independent extraction passes (different prompts; different models when both are configured) and caches the outputs by input hash.
+2. `astro verify` runs the gates: G1 schema, G2 the passes agree, G3 every entity and number is named in the verse, G4 deterministic parse of formulaic phrasings, G5 chapter-structure order (from `sources/<edition>/chapters.yaml`, optional), G6 the engine finds satisfying and failing charts (these become the EVAL-4 fixtures), G7 back-translation judged against the verse.
+3. All applicable gates pass → `verified`. Any failure → `queued` with the reasons.
+4. `astro queue` shows queued items with the verse, the translation and both extractions. The operator resolves direction and number questions (`operator_verified`); questions of meaning wait for a reviewer, and the verse stays usable as prose meanwhile.
+5. An expert, when available, can promote any item to `reviewed`, or correct or reject it.
+6. CI checks: schema valid, operators known, every `source_passages` ID resolves in the current collection, fixtures exist and pass (`EVAL-4`).
 
-### 10.7 Review budget
+At runtime `verified`, `operator_verified` and `reviewed` items load, and answers label each. `draft`, `queued` and `rejected` items are never evaluated or cited. A condition inside a verse that is not verified is reported as `unchecked`: the analyst presents it as conditional and never decides it (§13.3).
 
-The Core Parashari families add up to roughly 1,100–1,400 cards:
+### 10.7 Workload
 
-| Family | Approximate count |
+There is no review budget gating the release. The operator's work is:
+
+| Task | Size |
 |---|---|
-| (a) graha in rashi | 108 |
-| (b) graha in bhava | 108 |
-| (c) lord in bhava | 144 |
-| (d) graha in nakshatra | 243 |
-| (e) conjunctions | ~250 |
-| (f) aspects | ~70 |
-| (g) curated yogas and doshas | 20–30 |
-| (h) dasha × antardasha | 81 |
-| (i) transits | ~108 |
+| Chapter maps per edition (§10.6 step 2, G5) | Minutes per edition, from the table of contents |
+| Queue items about direction or numbers | Depends on the queue rate measured in EVAL-11; each item is a short check against the translation |
+| Spot audit per release | 20 random verified items |
+| Extraction-accuracy labels (EVAL-11) | At least 100 factor tags, once, plus new compound cards |
+| Topic maps (§11.3) | 11 Core maps to approve |
 
-At about 5 minutes per card, that is 90–120 reviewer-hours. Review is therefore **ordered by topic**:
-
-- **Phase 3:** the cards that the career, marriage and education topic maps reach.
-- **Phase 4:** dasha and transit families.
-- **Phase 5:** BNN families.
-- **Phase 6 (Core release):** the remaining Parashari cards. Requirement KNW-5 schedules the families across phases 3–6 to match.
-
-Until a topic's cards are reviewed, that topic is answered from factor retrieval with the coverage item `no_reviewed_rules` and status `partial`, never with draft cards.
+If a topic has no verified items for a required family, its coverage item is `unavailable` with `no_verified_rules`, and the answer uses the factor passages and prose it has, with that gap stated.
 
 ## 11. Question planning
 
@@ -757,11 +762,12 @@ bnn:
   relations: [trine, second, twelfth, seventh]
   transit_triggers: [jupiter_over_significator, saturn_over_significator]
   rule_families: [bnn_combination, transit]
+basis: [bphs_santhanam_1984:xx.yy, …]   # passages on house significations that justify the entries
 version: 1
-reviewed_by: <astrologer>
+approved_by: operator                   # an expert's review is optional
 ```
 
-Maps exist for the 11 Core topics (career, wealth, marriage/relationships, children, education, health in traditional framing, property, siblings, parents, foreign travel/residence, spirituality), with vehicles and litigation as S. They are routing aids, not rules.
+Maps exist for the 11 Core topics (career, wealth, marriage/relationships, children, education, health in traditional framing, property, siblings, parents, foreign travel/residence, spirituality), with vehicles and litigation as S. They are routing aids, not rules. Entries are drafted from the edition's chapters on house significations, each citing its passages, checked by gates G1 and G3, and approved by the operator.
 
 ### 11.4 Dependency plan and closure (`QRY-4`)
 
@@ -814,7 +820,7 @@ Every search runs against the run's pinned collection, with a Qdrant `must` filt
 
 For a factor such as "Saturn in the 10th from Lagna":
 
-- **Defining filters:** `grahas ∋ saturn`, `bhavas ∋ 10`, `reference_frame = lagna`. These are never relaxed.
+- **Defining filter:** the factor key `graha_in_bhava:saturn:10:lagna` in `factor_keys`. Entity sets alone cannot tell "the 7th lord in the 12th" from "the 12th lord in the 7th", so the key, not `bhavas ∋ …`, defines the factor. It is never relaxed.
 - **Secondary filters** (e.g. `rashis ∋ aries`) may be dropped if fewer than 3 hits return.
 - If the defining filters still return nothing, the coverage item is `insufficient`. The search does not widen into a different factor, so "10th lord in Saturn's sign" can never stand in for "Saturn in the 10th".
 
@@ -823,7 +829,7 @@ For a factor such as "Saturn in the 10th from Lagna":
 | Route | Mechanism | Req |
 |---|---|---|
 | Rule-linked | For each `satisfied`, `unknown` or cancelled decision: fetch `source_passages` by ID, plus passages whose `rule_ids` contain the card, plus their `links.exceptions/prerequisites` | RET-1 a |
-| Factor | One spec per planned factor (graha-in-bhava, lord-in-bhava, graha-in-rashi, conjunction, aspect, nakshatra), defining filters as §12.3, school-filtered | RET-1 b, RET-3 |
+| Factor | The chart's factor keys (computed by `FactorIndex` from the facts) matched to verified `factor_keys`, each match recorded as a `FactorMatch`; plus one search spec per planned factor for passages without a tag, school-filtered | RET-1 a–b, RET-3 |
 | Timing | Dasha: MD/AD/PD lord + its natal house, lordships and dignity, `rule_family = dasha`, plus the MD–AD relationship. Transit: transiting graha + house from Moon/Lagna + natal point contacted, `rule_family = transit`, plus named states. BNN: transiting graha + natal significator, `school = bnn` | RET-5 |
 | Contrary | §12.5 | RET-6 |
 | Concept | Entity resolution → `lookup` for canonical facts + hybrid search filtered on the concept's entity | UC-1 |
@@ -837,10 +843,10 @@ Story, remedy and case passages are never returned by the rule, factor, timing o
 
 For each satisfied decision and each top factor finding, the engine runs a contrary spec:
 
-- **Rule-linked:** reviewed cards on the same entities with the opposite `polarity`, cards whose `contradicts` lists the finding, and cancellation cards in `rule_family ∈ {yoga, dosha}` that touch the same grahas. Their passages are fetched by ID.
+- **Rule-linked:** verified cards on the same entities with the opposite `polarity`, cards whose `contradicts` lists the finding, and cancellation cards in `rule_family ∈ {yoga, dosha}` that touch the same grahas. Their passages are fetched by ID.
 - **Search:** a negation-framed query with the same defining filters, e.g. "conditions that mitigate Saturn in the 10th".
 
-(Polarity lives on rule cards, not passages; a passage inherits it only through a linked card.) Contrary results are a required checklist item for every main finding.
+Polarity comes from verified cards and from the passage's LLM-tagged `polarity` (§9.7), which orders evidence and finds contrary passages but never decides applicability. Contrary results are a required checklist item for every main finding.
 
 ### 12.6 Method isolation (`RET-8`)
 
@@ -854,7 +860,7 @@ The plan produces one `CoverageItem` per `(method, topic, required_family)`, plu
 |---|---|
 | `satisfied` | Required evidence is present |
 | `insufficient` | Searched, nothing adequate found |
-| `unavailable` | No reviewed rules, or unsupported |
+| `unavailable` | No verified items for the family, or unsupported |
 | `budget_omitted` | Not searched or dropped because of a budget |
 | `not_applicable` | Not needed for this chart or question |
 
@@ -886,7 +892,7 @@ A unit is added whole or not at all. If a required unit does not fit, the affect
 
 ### 12.9 Failure handling and reason codes (`RET-12`, `NFR-10`)
 
-Reason codes: `missing_input`, `invalid_local_time`, `out_of_range`, `unsupported_feature`, `unsupported_calendar`, `unsupported_profile`, `unsupported_method`, `unsupported_window`, `no_reviewed_rules`, `no_matching_passages`, `rights_restricted`, `sensitive_birth_time`, `dependency_cycle`, `depth_exceeded`, `budget_exhausted`, `tool_error`.
+Reason codes: `missing_input`, `invalid_local_time`, `out_of_range`, `unsupported_feature`, `unsupported_calendar`, `unsupported_profile`, `unsupported_method`, `unsupported_window`, `no_verified_rules`, `no_matching_passages`, `rights_restricted`, `sensitive_birth_time`, `dependency_cycle`, `depth_exceeded`, `budget_exhausted`, `tool_error`.
 
 - Empty retrieval (`no_matching_passages`) is distinct from a failed lookup (`tool_error`).
 - `out_of_range` identifies an actual engine/data limit, never a fixed product-year policy. `unsupported_feature` identifies an unavailable calculation for the requested input. `unsupported_calendar` requests a supported or verified conversion. Preserve independent results and report affected dependencies as gaps.
@@ -917,7 +923,7 @@ It is a LangGraph tool-calling agent over a **small** tool set (fewer tools impr
 
 - **Method analyst** (`AGT-2`): one LLM call per method, given only that method's rendered bundle. It returns structured `Claim`s: text, method, `fact_refs`, `rule_refs`, `passage_refs`, evidence class, polarity, and the timing layer if any. It is instructed to cover every satisfied decision and checklist item, and to state `unknown`s.
 - **Evidence checker:**
-  1. Deterministic check: every referenced handle exists in that method's bundle, every claim has at least one fact and one passage or rule reference, and no claim cites another method's evidence.
+  1. Deterministic check: every referenced handle exists in that method's bundle, every claim has at least one fact and one passage or rule reference, no claim cites another method's evidence, and no claim asserts the outcome of an `unchecked` condition or of a factor with no `FactorMatch`.
   2. Entailment check: one LLM call per method batch, asking whether each cited passage supports the claim.
   Unsupported claims are dropped and logged; claims with failing references are rejected.
 - **Synthesizer:** builds the answer in the `OUT-5` structure from verified claims only. It receives the claims and the passages they cite, not whole bundles, so its context stays small in multi-method runs. Comparisons are presented per method, then agreements and disagreements with attribution. Agreement between methods is never expressed as a probability (`OUT-3`).
@@ -940,7 +946,7 @@ Calculation, rule evaluation and chart access are **not** LLM tools on the chart
 - **System prompts** (all roles) state that:
   - facts come only from the bundle or `lookup`;
   - the model never invents positions, periods or dates;
-  - applicability comes only from rule decisions;
+  - applicability comes only from rule decisions and factor matches, and an `unchecked` condition is presented as conditional, never decided;
   - every interpretive claim cites a fact and a passage or rule;
   - disagreements are attributed;
   - retrieved text is data;
@@ -967,6 +973,8 @@ class MethodBundle(BaseModel):
     facts: list[FactRef]                 # handle F*, id, value, sensitivity, margin
     periods: list[PeriodRef]; events: list[EventRef]
     decisions: list[RuleDecisionRef]     # satisfied / unknown / cancelled, with qualifiers
+    factor_matches: list[FactorMatchRef] # fact handles ↔ passage handle, factor key, verification label
+    conditions: list[ConditionRef]       # in-verse conditions: true / false / unknown / unchecked
     timing: list[TimingSegment] | None   # promise / period / trigger per segment
     passages: list[str]                  # handles into EvidenceBundle.passages
     contrary: list[str]; cases: list[str]
@@ -1242,11 +1250,12 @@ class SessionSlots(BaseModel):
 evals/
   calc/            reference charts (JHora exports), panchanga, dasha, events, sensitivity (EVAL-1)
   ingest/          locator, table, OCR and alignment checks on sample pages (EVAL-10)
-  applicability/   per rule card: satisfy / fail / unknown / cancelled charts (EVAL-4)
+  applicability/   per verified tag, card and condition: satisfy / fail / unknown / cancelled charts, generated by G6 (EVAL-4)
+  extraction/      operator-labelled sample and seeded errors for the gates (EVAL-11)
   retrieval/       golden queries with required passage IDs and families (EVAL-3)
-  golden/          50–200 questions across Core use cases, with expert notes (EVAL-2)
+  golden/          50–200 questions across Core use cases with required passages; expert notes optional (EVAL-2)
   scenarios/       end-to-end scenarios with expected statuses and evidence (EVAL-9)
-  readings/        reference charts + expert rubric (EVAL-6)
+  readings/        reference charts + rubric; expert correctness score optional (EVAL-6)
   timing/          dasha chains and events with expected layers (EVAL-7)
 ```
 
@@ -1258,9 +1267,10 @@ Each layer has its own runner and report, so a failure is attributable to one la
 |---|---|
 | Calculation | Tolerance pass rate per fact kind (NFR-1); exact match of discrete facts; event times within 1 min (slow bodies: 10 min) |
 | Applicability | Exact decision state per fixture |
+| Extraction | Exact-match rate of verified items; direction and number errors among verified items (target 0); gate catch rate on seeded errors; queue rate per extraction model (EVAL-11) |
 | Retrieval | Recall@k of required passages and families; recall of exceptions and contrary passages; MRR; nDCG@10; **contamination rate** (share of non-selected-school predictive passages in a method's bundle; target 0); **alias invariance** (identical top-k across alias variants) |
-| Answers | Faithfulness and citation entailment (LLM judge, calibrated against 50 expert-labelled claims); correct fact references; method labels; stated uncertainty; invented rules or dates (target 0); safety rubric |
-| Readings | Expert rubric: factor coverage, correctness, contrary factors, clarity (1–5) |
+| Answers | Faithfulness and citation entailment (LLM judge, calibrated against 50 operator-labelled claims); correct fact references; method labels; stated uncertainty; invented rules or dates (target 0); safety rubric |
+| Readings | Rubric: factor coverage, faithfulness to cited sources, contrary factors, clarity (operator, 1–5); astrological correctness (expert when available, otherwise not assessed) |
 | Operations | p50/p95 latency per route; LLM calls and tokens per run |
 
 ### 19.3 Scenarios (`EVAL-9`)
@@ -1288,17 +1298,17 @@ Each layer has its own runner and report, so a failure is attributable to one la
 
 ### 19.4 Cadence and gates
 
-- **On every change (fast, < 5 min, no LLM):** calc, applicability, ingest samples, retrieval on a frozen collection, integrity checks, PII tests.
+- **On every change (fast, < 5 min, no LLM):** calc, applicability, the gates over cached extractions, ingest samples, retrieval on a frozen collection, integrity checks, PII tests.
 - **Before merge to `main`:** the above plus golden-set generation metrics and scenarios.
-- **At phase exit:** expert rubric on readings. Targets for the phase are agreed at phase start and recorded in `evals/targets/phase-N.yaml`. A phase exits when its **M** requirements pass, targets are met, and earlier phases do not regress (requirements §7).
+- **At phase exit:** the readings rubric (expert correctness score when an expert is available). Targets for the phase are agreed at phase start and recorded in `evals/targets/phase-N.yaml`. A phase exits when its **M** requirements pass, targets are met, and earlier phases do not regress (requirements §7).
 
 ## 20. Delivery plan
 
 | Phase | Work | Exit |
 |---|---|---|
-| **1. Foundations** | Request model, normalizer (worldwide lookup/coordinates, calendar adapters, date-specific tz and documented historical standards, precision), encrypted store with person storage (birth records versioned), persistent fact cache, inspection, deletion and log redaction, calc profiles, positions/condition/houses/REL-1, D1/D9/D10, birth panchanga, Vimshottari MD/AD/PD, ontology core with aliases, confusables and the alias matcher, source register, fact model, calc eval harness, CI skeleton ([phase1-foundations.md](phase1-foundations.md)) | EVAL-1 calc fixtures pass at NFR-1 tolerances; ontology reviewed (needs open questions 1 and 3); deletion and redaction tests pass |
-| **2. First corpus** | BPHS edition: parse, OCR gate, verse chunking, locators, alignment, tagging, canonical text, Qdrant release, licence filters; concept route (open agent); planner (intent); bundle + integrity; answers with citations; injection defence | Concept and alias evals at target; EVAL-2/3/5 baselines recorded |
-| **3. Parashari rules and reading** | DSL + evaluator + decisions; extraction and review workflow; cards for career/marriage/education; topic maps (11); dependency plan and closure; CALC-4, REL-2/3, CALC-7 sensitivity; rule-linked, factor and contrary retrieval; coverage, budgets and context assembly; chart workflow, analyst, checker, synthesizer; memory core on the phase-1 store: reference resolution, corrections as new birth-record versions, proposals and confirmation, session slots and carry-forward, `needs_input` suspension, reading records, preferences, flags, inspection and deletion (§17) | EVAL-4 pass; EVAL-6 rubric at target; scenarios for career, uncertain time, budget, failure, draft rule |
+| **1. Foundations** | Request model, normalizer (worldwide lookup/coordinates, calendar adapters, date-specific tz and documented historical standards, precision), encrypted store with person storage (birth records versioned), persistent fact cache, inspection, deletion and log redaction, calc profiles, positions/condition/houses/REL-1, D1/D9/D10, birth panchanga, Vimshottari MD/AD/PD, ontology core with aliases, confusables and the alias matcher, source register, fact model, calc eval harness, CI skeleton ([phase1-foundations.md](phase1-foundations.md)) | EVAL-1 calc fixtures pass at NFR-1 tolerances; ontology values cite the registered edition (needs open question 1); deletion and redaction tests pass |
+| **2. First corpus** | BPHS edition: parse, OCR gate, verse chunking, locators, alignment, tagging with typed factor tags and their verification (G1–G7, queue), canonical text, Qdrant release, licence filters; concept route (open agent); planner (intent); bundle + integrity; answers with citations; injection defence | Concept and alias evals at target; EVAL-11 at target; EVAL-2/3/5 baselines recorded |
+| **3. Parashari rules and reading** | DSL + evaluator + decisions; factor matching; compound cards and in-verse conditions through the verification pipeline; topic maps (11); dependency plan and closure; CALC-4, REL-2/3, CALC-7 sensitivity; rule-linked, factor and contrary retrieval; coverage, budgets and context assembly; chart workflow, analyst, checker, synthesizer; memory core on the phase-1 store: reference resolution, corrections as new birth-record versions, proposals and confirmation, session slots and carry-forward, `needs_input` suspension, reading records, preferences, flags, inspection and deletion (§17) | EVAL-4 pass; EVAL-6 rubric (operator parts) at target; scenarios for career, uncertain time, budget, failure, queued rule |
 | **4. Timing** | `periods_in`, sandhi, period-lord context; event solver, named states, eclipses, Ashtakavarga and Shadbala, vedha/kakshya; remaining vargas; lunar calendar; dasha and transit cards; timing retrieval and layers; `recall`, `what_changed`, native notes (§17.5, §17.6) | EVAL-7 at target |
 | **5. BNN** | BNN adapter, karaka roles, relations, triggers; Rao text ingestion; BNN cards; worked cases; per-method analysts and comparison | BNN eval and contamination = 0 |
 | **6. Stories, modern, Core completion** | Puranic episodes with variants and link attribution; modern-author sources; contemporary route; regional aliases; remaining Core rule-card review | Story and contemporary evals; all Core scenarios pass; **Core release** |
@@ -1365,7 +1375,7 @@ Every requirement ID in [requirements.md](../req/requirements.md) maps to the de
 | SCH-JAI-1, SCH-KP-1, SCH-TAJ-1, SCH-PRS-1, SCH-MUH-1, SCH-CMP-1 | §7.10 | adapter evals |
 | SCH-LK-1, SCH-WES-1 | — (C) | — |
 | KNW-1 … KNW-4 | §8 | ontology review; integrity CI |
-| KNW-5 | §10.1–§10.7 | EVAL-4 |
+| KNW-5 | §9.6, §10.1–§10.7, source-first §2–§3 | EVAL-4, EVAL-11 |
 | KNW-6 | §11.3 | topic-map review; career scenario |
 | KNW-7 | §9.4 | story eval |
 | KNW-8 | §9.4, §12.4 | phase 7 |
@@ -1376,7 +1386,7 @@ Every requirement ID in [requirements.md](../req/requirements.md) maps to the de
 | ING-1, ING-2 | §9.3 | ingest evals |
 | ING-3 | §9.4 | exception-reachability test |
 | ING-4 | §9.6, §9.7 | tagging eval |
-| ING-5 | §10.6 | draft-rule scenario |
+| ING-5 | §10.6, source-first §5 | EVAL-11; queued-rule scenario |
 | ING-6 | §9.8, §5.4 | re-ingest and withdrawal scenarios |
 | ING-7 | §9.8, §16.3 | distributable-build test |
 | ING-8 | §9.1 | register |
@@ -1386,7 +1396,7 @@ Every requirement ID in [requirements.md](../req/requirements.md) maps to the de
 | QRY-3 | §11.5 | missing-input scenarios |
 | QRY-4 | §11.4 | plan snapshot tests |
 | QRY-6 | §11.6, §17.3 | carry-forward fixtures |
-| APP-1 | §10.2, §13.1 | no-LLM node test |
+| APP-1 | §10.2, §12.4, §13.1, §13.3 | no-LLM node test; unchecked-condition checker test |
 | APP-2, APP-3 | §10.3 | EVAL-4 incl. cycle fixture |
 | APP-4 | §10.5 | EVAL-7 |
 | APP-5 | §10.4 | replay test |
@@ -1453,7 +1463,7 @@ At 1024-d float32 plus sparse vectors and payload, that is about 150 MB. Even a 
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Reviewer capacity (§10.7) | Core release slips | Topic-ordered review; review packs with generated test charts; `partial` instead of drafts |
+| Extraction errors that pass verification (a shared misreading of a non-formulaic verse) | A wrong rule applied and cited with a genuine verse | Gates G4, G5 and G7; EVAL-11 with seeded errors; the answer quotes the verse; spot audit per release; labels say how each item was verified |
 | OCR quality of Devanagari scans | Bad passages, wrong verses | Quality gate; VLM fallback; prefer editions with text layers |
 | Local model quality in `local` mode | Weaker analysis and citations | Role-specific models; checker drops unsupported claims; measured, not assumed |
 | Edition licensing | Cannot index a preferred translation | Register-first; private vs distributable builds |
@@ -1468,7 +1478,7 @@ Open decisions are tracked, with answers, in [open-questions.md](../req/open-que
 |---|---|---|
 | BPHS and BNN editions (requirements Q1) | Phases 2, 5 | — |
 | Modern authors (Q2) | Phase 6 | — |
-| Reviewers (Q3) | Phase 1 exit | — |
+| Reviewers (Q3) | Nothing blocks without one (source-first) | Operator verifies; labels say so |
 | Swiss Ephemeris licence (Q4) | Distribution only | AGPL, private use |
 | Vimshottari `year_days` | Phase 1 fixtures | Match the reviewer's JHora setting, recorded in `parashari_v1` |
 | Default nodes (mean/true) | Phase 1 | Mean |

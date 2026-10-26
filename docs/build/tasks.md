@@ -136,7 +136,7 @@ Design reviewed in four rounds with dry runs (its §8). Build order B → C → 
 - [x] F1.6 `AliasMatcher` (longest match, ambiguous spans, `reserved`, house ordinals); KNW-12 confusable fixtures
 - [x] F1.7 `astro ontology match`, `astro ontology review-pack`
 
-F1 result: 257 entities in 22 kinds, all `provisional`; 62 tests (the KNW-12 confusables, folding, one mutation per integrity rule, versions). Calculation output for the full 15-feature run is byte-identical before and after (only the reference-data version stamp changed, by design); the PyJHora oracle suite passes. Not done here: the wider KNW-2/KNW-3 attributes (graha nature, gender, guna…; nakshatra deity, gana, yoni…) and Hindi regional variants beyond those listed are content for the reviewer pass.
+F1 result: 257 entities in 22 kinds, all `provisional`; 62 tests (the KNW-12 confusables, folding, one mutation per integrity rule, versions). Calculation output for the full 15-feature run is byte-identical before and after (only the reference-data version stamp changed, by design); the PyJHora oracle suite passes. Not done here: the wider KNW-2/KNW-3 attributes (graha nature, gender, guna…; nakshatra deity, gana, yoni…) and Hindi regional variants beyond those listed are content to draft from the registered edition (operator check; astrologer optional).
 
 **F2 Source register (design C)**
 - [ ] F2.1 `sources/register.yaml` (empty) and the Pydantic model with per-status rules
@@ -158,7 +158,7 @@ F1 result: 257 entities in 22 kinds, all `provisional`; 62 tests (the KNW-12 con
 - [ ] F4.3 `evals/calc/edge_cases.yaml` (fixture labels vs engine-test IDs); `astro eval calc [--gate] [--report]`
 - [ ] F4.4 Reviewer pack (`--pack`): 30 charts with solver-found boundary cases and the settings to use
 
-**Waiting on people (phase-1 exit):** reviewer for the ontology review and JHora exports (open question 3); BPHS edition registered before any ontology file can be marked reviewed (open question 1).
+**Waiting on people (phase-1 exit):** the BPHS edition registered before any ontology file can be marked reviewed (open question 1); someone able to run Jagannatha Hora for the reference exports. Since the source-first revision neither needs an astrologer.
 
 ### D11 review rounds
 

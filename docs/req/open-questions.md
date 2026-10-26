@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Date** | 2026-10-25 |
+| **Date** | 2026-10-26 (revised for [source-first analysis](../design/source-first.md): an astrologer is optional) |
 | **Replaces** | the question lists in [requirements.md](requirements.md) §11, [memory.md](memory.md) §8, [design.md](../design/design.md) §23 and [calc-review.md](../design/calc-review.md) §5, which now point here |
 | **How to answer** | Write in the **Your answer** lines (or reply in chat). Part B can be sent to the astrologer as it is. Where a question has a recommendation, "OK" accepts it |
 
@@ -14,13 +14,14 @@ Every question below was checked for three things: it needs a person (code or a 
 
 | # | Question | Who | Needed by | Recommendation | RAG |
 |---|---|---|---|---|---|
-| **A1** | Who reviews the astrology, and which software do they use? | You | Phase-1 exit; essential by phase 3 | Name one person now | ★ (part 1) |
-| **A2** | Which BPHS edition do you have? | You (with the reviewer) | Phase 2; "ontology reviewed" | The edition the reviewer cites | ★ |
+| **A1** | Is an astrologer available (optional), and can you run Jagannatha Hora? | You | Whenever; JHora before task F4 | Optional; yes to JHora if possible | ☆ |
+| **A2** | Which BPHS edition do you have? | You | Phase 2; "ontology reviewed" | A translation with a text-layer PDF | ★ |
 | **A3** | What machine runs this, and may chart facts go to an API model? | You | Private store (F3) now; phase 2 | Mac + `api` mode allowed | ★ |
 | **A4** | Will anyone but you run or receive this system? | You | Before any distribution | No | ☆ |
-| **B1** | Settings of the reviewer's reference software | Reviewer | Phase-1 exit (accuracy check) | — | |
-| **B2** | Eleven interpretation conventions (dignity, combustion, war, gandanta…) | Reviewer | Phase-1 exit | Current defaults | |
-| **B3** | Ontology review | Reviewer | Phase-1 exit | — | ★ (names only) |
+| **A5** | Will you do the operator tasks that replace expert review? | You | Phase 2 | Yes; about a day up front | ★ |
+| **B1** | Settings of the reference software | You (or an astrologer) | Phase-1 exit (accuracy check) | Jagannatha Hora's defaults | |
+| **B2** | Eleven interpretation conventions (dignity, combustion, war, gandanta…) | You (or an astrologer) | Phase-1 exit | Accept the current defaults | |
+| **B3** | Ontology check | You (or an astrologer) | Phase-1 exit | — | ★ (names only) |
 | **C1–C5** | Confirm five proposed defaults | You | Various | As proposed | |
 | **D** | Later questions, no answer needed yet | — | Phases 4–7 | — | ★ (phase-2 evaluation targets only) |
 
@@ -32,13 +33,13 @@ The RAG pipeline is phase 2 (design §20): ingest one BPHS edition (parse, OCR, 
 |---|---|---|
 | 1 | **A2** BPHS edition and its form | It *is* the corpus. The form decides the hardest engineering: a text PDF needs no OCR, a scan needs Devanagari OCR and a quality gate. The edition decides the verse numbering every citation uses. Whether Sanskrit is indexed decides chunking and translation–verse alignment |
 | 2 | **A3** API use and your machine | Four RAG steps use an LLM: tagging passages at ingestion, planning the query, writing the cited answer, checking each claim against its passage. "API allowed" or "local only" decides the model setup and the realistic answer quality. The machine decides whether local embedding, reranking and LLMs are practical |
-| 3 | **A1 part 1** Who reviews | The golden question set (EVAL-2: 50–200 questions with expected sources) is built with an astrologer in phase 2. Without it, retrieval quality can only be measured on questions we write ourselves. The reviewer also spot-checks verse alignment and tags |
+| 3 | **A5** Operator tasks | Since the source-first revision, verification replaces expert review. A few things still need a person: labelling the extraction sample (EVAL-11), settling queued direction and number questions, and building the golden question set (EVAL-2) from the book. That person is you |
 | 4 | **B3, names only** Alias review | Names drive the tagging of every passage and the rewriting of every query. A wrong or missing alias means a passage is never found, or the wrong one is. The attribute values in B3 can wait |
 | 5 | **D: phase-2 evaluation targets** | Phase 2 exits on concept and alias evaluations "at target" and recorded baselines for EVAL-2/3/5. Targets are set at phase start (requirements §7), so they are needed when phase 2 begins. A first proposal can come from us once the golden set exists |
 | minor | **A4** Distribution | If the answer is no, there is one private index, and licence filtering stays a recorded field, not a second build |
 
 **Can wait while the focus is RAG:**
-- **A1 part 2, B1, B2:** they decide chart calculations and the accuracy check against the reviewer's software, not retrieval. The calculations already run on provisional defaults.
+- **A1, B1, B2:** they decide chart calculations and the accuracy check, not retrieval. An astrologer would improve labels, but nothing waits on one. The calculations already run on provisional defaults.
 - **B3 values:** exaltation degrees and the like are used by calculations, not by search.
 - **C1–C5:** birth-date range, memory retention, remedies, Shadbala and phase-7 order belong to chart readings, memory (phase 3) or later phases.
 - **The rest of D:** the modern authors (phase 6) and the BNN edition (phase 5) are RAG content too, but for later corpora.
@@ -47,22 +48,18 @@ The RAG pipeline is phase 2 (design §20): ingest one BPHS edition (parse, OCR, 
 
 ## A. For you, now
 
-### A1. Who is the reviewer, and which software do they use? *(was requirements Q3)* — ★ RAG: part 1
+### A1. Is an astrologer available, and can you run Jagannatha Hora? *(was requirements Q3)* — ☆ RAG: minor
 
-An astrologer has to:
-- **sign off on the ontology** (the 257 entities, their names and values);
-- **settle the conventions** in Part B;
-- **export about 30 reference charts** from their software, for the accuracy check;
-- **build the golden question set** with us (phase 2: 50–200 questions with the passages a good answer must cite);
-- later, **review rule cards** (phase 3: career, marriage, education).
+Since the [source-first revision](../design/source-first.md), nothing waits on an astrologer:
+- extracted conditions become usable through automated verification;
+- answers quote the verse and say how each item was verified (machine, operator or expert);
+- test charts are generated by the engine.
 
-A rule card cannot become executable without a reviewer (ING-5). That is the project's main protection against invented or misremembered rules.
+An astrologer, if one is available, **upgrades** things. They can mark items expert-reviewed, settle queued questions of meaning, score readings for astrological correctness and choose conventions (B2).
 
 **Questions:**
-1. Who is it: you, or a named astrologer? One person can cover Parashari now and BNN by phase 5, or BNN can be a second person.
-2. Which software do they use for charts? The accuracy check is built around **Jagannatha Hora**. If they use something else (Parashara's Light, Kala, …), the reference-chart format changes, so this needs knowing before task F4.
-
-**If nobody is available yet:** building continues (register, store, eval harness, phase-2 ingestion), but everything stays `provisional`, answers say so, rule cards cannot be activated, and no phase can formally exit.
+1. Is there an astrologer who could help occasionally? (Optional. "No" is a fine answer.)
+2. Can you run **Jagannatha Hora**? The calculation accuracy check compares about 30 charts exported from it. It is free Windows software, so on a Mac it needs a Windows VM or a compatibility layer. If you use other software (Parashara's Light, Kala, …), say which, before task F4.
 
 **Your answer:**
 
@@ -71,7 +68,7 @@ A rule card cannot become executable without a reviewer (ING-5). That is the pro
 Phase 2 ingests one edition of Brihat Parashara Hora Shastra, and the ontology cites it.
 
 - **Rights are simpler than the old question implied.** Indexing a copy you bought, for your own private use, is allowed by the design (rights `licensed`, private build). Rights only become a hard question if the system is distributed (A4).
-- **What matters is verse numbering.** Chapter and verse numbers differ between editions. If the reviewer quotes "BPHS 24.12" from their copy and the system indexes another edition, citations won't line up. So the edition should be the one the reviewer uses, for example R. Santhanam's or G. C. Sharma's English translation.
+- **What matters is verse numbering and that you can read it.** Chapter and verse numbers differ between editions, and every citation uses the indexed edition's numbers. Pick the edition you will check citations against yourself, for example R. Santhanam's or G. C. Sharma's English translation. With source-first, the translation's wording is what the verification gates read, so a clear, literal translation matters more than before.
 - **Form matters for effort.** A PDF with a text layer is easiest. A scanned PDF needs OCR, and Devanagari OCR is the riskiest part of ingestion. A printed book needs scanning first.
 
 **Questions:**
@@ -102,15 +99,34 @@ The old question asked whether to license Swiss Ephemeris under the AGPL or comm
 
 **Your answer:**
 
+### A5. Will you do the operator tasks that replace expert review? — ★ RAG
+
+Source-first moves a few small tasks to the operator (design §10.7):
+
+| Task | When | Size |
+|---|---|---|
+| Label a sample of extracted factor tags against the translation (EVAL-11) | Phase 2, once | At least 100 items, each "does the verse say the 7th lord in the 12th?" A few hours |
+| Write the golden question set: questions plus the verses a good answer must cite (EVAL-2) | Phase 2 | 50–200 questions; we can draft them from the book for you to correct |
+| Settle queued items about direction or numbers | As extraction runs | Short checks against the translation; the count depends on the measured queue rate |
+| Chapter map of the edition (which chapter covers what) | Phase 2, once | Minutes, from the table of contents |
+| Approve the 11 topic maps | Phase 3 | Each entry cites its verses |
+| Spot audit of 20 random verified items | Each release | Under an hour |
+
+None needs astrological judgement beyond reading the translation. Questions of meaning stay queued for an astrologer, and the verse remains usable as text meanwhile.
+
+**Recommendation:** yes. If you'd rather not do some of these, say which; the evaluations then run on our own drafts, and the reports say so.
+
+**Your answer:**
+
 ---
 
-## B. For the reviewer
+## B. Conventions and ontology (you, or an astrologer if available)
 
-Everything in this part already works in the code with a provisional default. Every chart report lists the provisional settings under **Notes**. Answering only replaces a default; it does not cause rework. "Accept all current defaults" is a valid answer to B2.
+Everything in this part already works in the code with a provisional default. Every chart report lists the provisional settings under **Notes**. Answering only replaces a default; it does not cause rework. "Accept all current defaults" is a valid answer to B1 and B2.
 
 ### B1. Settings in your chart software
 
-The system must use the same conventions as the software that produces the reference charts, or the accuracy check compares unlike things. Please give the setting you use for each:
+The system must use the same conventions as the software that produces the reference charts, or the accuracy check compares unlike things. If you run Jagannatha Hora with its default settings, report those, and we set the profile to match. Please give the setting for each:
 
 | Setting | Current default | Why it matters |
 |---|---|---|
@@ -142,15 +158,15 @@ The easiest answer is a screenshot of the software's calculation preferences.
 
 **Your answer:**
 
-### B3. Ontology review — ★ RAG: the names
+### B3. Ontology check — ★ RAG: the names
 
-Run `astro ontology review-pack --out pack.md`. It lists every entity with its names and values in one document. Please check:
+Run `astro ontology review-pack --out pack.md`. It lists every entity with its names and values in one document. For the RAG pipeline only the names matter; the values can wait. Please check:
 - **values against your BPHS edition** (exaltation degrees, moolatrikona ranges, friendships), noting chapter and verse;
 - **names:** wrong, missing or regional ones;
 - **these names, which are treated as ambiguous rather than matched on their own**, because they are also ordinary words or names: *Kanya* (girl), *Singh* (surname), *Mesh* (English word), *Saumya* (benefic), *Mandi* (market), *Kala* (time), *Guru* (teacher), *Manda*, *Sauri*;
-- **the house significators and karakas**, and the seed list of 28 chart yogas. The curated 20–30 for phase 3 are chosen later, with you.
+- **the house significators and karakas**, and the seed list of 28 chart yogas. The curated 20–30 for phase 3 are chosen from the yogas your edition describes.
 
-Graha, rashi and nakshatra attributes beyond what the calculations use (nature, gender, guna, nakshatra deity, gana, yoni…; KNW-2, KNW-3) still have to be added. They will be drafted from your edition once A2 is answered, and then reviewed the same way.
+Graha, rashi and nakshatra attributes beyond what the calculations use (nature, gender, guna, nakshatra deity, gana, yoni…; KNW-2, KNW-3) still have to be added. They will be drafted from your edition once A2 is answered, and checked the same way.
 
 **Your answer:**
 
@@ -174,12 +190,12 @@ Listed so nothing is lost. Each will be raised again when its phase starts.
 
 | Question | Who | Phase |
 |---|---|---|
-| Which one or two modern authors go in the Core source set? (e.g. B. V. Raman, K. N. Rao) *(was requirements Q2)* | You + reviewer | 6 |
-| Which edition of R. G. Rao's *Bhrigu Nandi Nadi*? | You + BNN reviewer | 5 |
-| Which relations count as "linked" in BNN (lineage decision, calc-review G-B1) | BNN reviewer | 5 |
-| Source for functional benefics and malefics per Lagna. Sources disagree; Laghu Parashari is the usual table (calc-review G-R2) | Reviewer | 4 |
-| Lunar-calendar conventions (samvatsara cycle, adhika and kshaya month naming, ritu, ayana), if C4 is not accepted (calc-review G-PN2) | Reviewer | 4 |
-| ★ Evaluation targets for each phase (requirements §7). For a RAG focus, the phase-2 targets are needed when phase 2 starts | You + reviewer | Start of each phase |
+| Which one or two modern authors go in the Core source set? (e.g. B. V. Raman, K. N. Rao) *(was requirements Q2)* | You | 6 |
+| Which edition of R. G. Rao's *Bhrigu Nandi Nadi*? | You | 5 |
+| Which relations count as "linked" in BNN (lineage decision, calc-review G-B1): taken from Rao's text, verified like any rule | You (astrologer optional) | 5 |
+| Source for functional benefics and malefics per Lagna. Sources disagree; Laghu Parashari is the usual table (calc-review G-R2). The table is transcribed from the chosen source and cited | You (astrologer optional) | 4 |
+| Lunar-calendar conventions (samvatsara cycle, adhika and kshaya month naming, ritu, ayana), if C4 is not accepted (calc-review G-PN2) | You (astrologer optional) | 4 |
+| ★ Evaluation targets for each phase (requirements §7). For a RAG focus, the phase-2 targets are needed when phase 2 starts | You (astrologer optional) | Start of each phase |
 
 ---
 
@@ -209,9 +225,15 @@ Each earlier question was tested: does it need a person, does the answer change 
 | Thirteen separate calculation settings | B1 (four settings, answerable with one screenshot) and B2 (a table where "accept defaults" is a valid answer) |
 
 **Added: missing before, but they change the work.**
-- **Which software the reviewer uses (A1.2).** The accuracy check assumed Jagannatha Hora without asking.
+- **Which software produces the reference charts (A1.2).** The accuracy check assumed Jagannatha Hora without asking.
 - **Your machine and API use (A3).** The key storage and the LLM setup depend on them.
 - **The dignity order (B2.1).** It was fixed in code without being shown to the reviewer.
+
+**Revised for source-first (2026-10-26):**
+- **A1 is no longer blocking.** "Who is the reviewer" became "is an astrologer available (optional)" plus "can you run Jagannatha Hora", the only part that still matters for phase 1.
+- **A5 added:** the operator tasks that replace review.
+- **Part B is answerable by you:** accepting the defaults is fine.
+- **D no longer waits on reviewers.**
 
 **Inconsistency fixed:** mean vs true node was listed as open (calc-review G-C13, design §23) but missing from the `provisional:` list of both calculation profiles, so chart reports did not flag it. It is now listed.
 

@@ -150,3 +150,7 @@ Design review changed one requirement: **KNW-5** spans phases 3–6, with rule-c
 ## Input-scope revision — 2026-10-18
 
 At the user's request, removed the fixed birth-year range, country preference in place lookup, blanket historical-year prompt, and categorical non-Gregorian input exclusion. Accept worldwide names/coordinates and original calendar labels; use maintained conversion libraries or documented converted inputs. Do not build bespoke geographic, historical-time or calendar research systems as a prerequisite. Keep invalid-input checks, explicit assumptions, and actual per-feature engine/data/domain limits. Unsupported calculations do not block unrelated knowledge retrieval. No changes to the selected astrological methods or their release phases.
+
+## Source-first revision — 2026-10-26
+
+At the user's request, expert review stops being a gate. Analysis rests on registered sources and computed facts; extracted conditions are verified automatically ([source-first.md](../design/source-first.md)), and an expert, when available, upgrades labels. Changed: KNW-1 (acceptance), KNW-5 (single-factor families become typed factor tags; cards only for compound conditions; phases 2–6), ING-4 (factor tags), ING-5 (verification instead of mandatory review), APP-1, APP-5, RET-1, RET-3, AGT-3, EVAL-2, EVAL-4, EVAL-6, new EVAL-11, phase exit (§7) and the reviewer assumption (§9). Unchanged: the LLM never decides applicability; calculation is code; every claim cites a source passage.

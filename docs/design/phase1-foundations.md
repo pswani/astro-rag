@@ -15,9 +15,9 @@ The calculation layer is done ([tasks.md](../build/tasks.md) B–E). Phase 1 can
 | A | Encrypted private store with person storage, fact cache, inspection and deletion; log redaction | "deletion and redaction tests pass" |
 | B | Ontology loader, aliases, confusables and the alias matcher | "ontology reviewed"; KNW-12 acceptance |
 | C | Source register: schema, validator, CLI | KNW-10 (M, phase 1) |
-| D | Calculation eval harness for the reviewer's Jagannatha Hora exports | "EVAL-1 calc fixtures pass at NFR-1 tolerances" |
+| D | Calculation eval harness for Jagannatha Hora reference exports | "EVAL-1 calc fixtures pass at NFR-1 tolerances" |
 
-All four can be **built** without an LLM, a corpus or an open reviewer decision. Two phase-1 **exits** still wait on people: the ontology review and the JHora exports need the reviewer (open question 3), and a reviewed ontology must cite a registered edition, which needs open question 1 (§3.4 rule 5). What is built here is what their work plugs into.
+All four can be **built** without an LLM, a corpus or an open reviewer decision. Since the source-first revision ([source-first.md](source-first.md)), no phase-1 exit needs an astrologer: the operator can export the reference charts (Jagannatha Hora is Windows software, so a Mac needs a Windows VM or compatibility layer) and check the ontology against the edition. Marking the ontology reviewed still needs a registered edition (open question 1, §3.4 rule 5).
 
 **Not in this document:** session context, proposals, reference resolution and reading records (memory, phase 3), the PII scrubber (phase 2, `api` mode only), canonicalized query rewriting (phase 2), ingestion (phase 2).
 
@@ -233,7 +233,7 @@ Transliteration variants (`Shani`, `Sani`, `Shanee`) are listed explicitly in `n
 2. **Alias uniqueness:** a folded alias appears in the `names` of at most one entity.
 3. **Collisions are declared:** if a folded alias is in one entity's `names` and another's `ambiguous_names`, that is an error — the alias must be ambiguous everywhere, so the matcher never silently picks one reading.
 4. **Disputed values carry sources:** an attribute given as a list of views needs a `source` on each view.
-5. Files with `meta.status: reviewed` cite sources as `<edition_id>:<locator>` resolving in the source register (§4); `provisional` files may use free text. **Consequence:** no file can be marked reviewed until the BPHS edition is chosen and registered (requirements open question 1), so the phase-1 exit "ontology reviewed" depends on that decision as well as on the reviewer.
+5. Files with `meta.status: reviewed` cite sources as `<edition_id>:<locator>` resolving in the source register (§4); `provisional` files may use free text. **Consequence:** no file can be marked reviewed until the BPHS edition is chosen and registered (requirements open question 1), so the phase-1 exit "ontology reviewed" depends on that decision. The operator or an astrologer may do the review.
 6. The existing calculation table checks (`YamlReferenceData.check`).
 7. **The two readers agree:** every ID the calculation can emit (`refdata.rashi_id`, `nakshatra_id`, `tithi_id`, `karana_id`, `nitya_yoga_id`, `vara`, the dignity values, the varga IDs) is an ontology entity. The two loaders parse the same files independently (the calculation layer may not import `astro.ontology`), and this test keeps them from drifting.
 8. Core kinds (graha, rashi, nakshatra, bhava, dignity, panchanga limbs, varga) have at least one Latin and one Devanagari name (KNW-1).
@@ -287,7 +287,7 @@ The matcher is what the phase-2 tagger and canonicalizer (design §9.6, §12.2) 
 
 ### 3.8 Content work and review
 
-The data is drafted as `provisional` from standard sources and reviewed with the astrologer (phase-1 exit "ontology reviewed"). `astro ontology review-pack` renders every entity with its names and attributes as a single document for that review.
+The data is drafted as `provisional` from standard sources and checked against the registered edition by the operator, or by an astrologer when one is available (phase-1 exit). `astro ontology review-pack` renders every entity with its names and attributes as a single document for that review.
 
 ---
 
@@ -373,7 +373,7 @@ expected:
   JHora takes a fixed offset and a Gregorian date, so the right-hand cases cannot be compared with it.
 - `astro eval calc [--gate] [--report out.json]` prints a pass rate per fact kind, every failure with its fixture and values, the `boundary` list, and the edge-case coverage.
 - Without `--gate` it fails only on a mismatch. With `--gate` (phase-1 exit) it also needs at least 30 fixtures, every left-hand label covered by a fixture, and every right-hand test ID collected by pytest.
-- **Reviewer pack:** `astro eval calc --pack` writes 30 proposed charts (inputs, edge-case labels, and the JHora settings to use) for the reviewer to export. The boundary cases are found with the engine's own solver (e.g. a birth minute when the Moon is within 20″ of a nakshatra boundary), so the pack is reproducible.
+- **Reviewer pack:** `astro eval calc --pack` writes 30 proposed charts (inputs, edge-case labels, and the JHora settings to use) for the operator (or reviewer) to export. The boundary cases are found with the engine's own solver (e.g. a birth minute when the Moon is within 20″ of a nakshatra boundary), so the pack is reproducible.
 - The harness is tested with fixtures built from the engine's own output, perturbed to check each tolerance and the boundary rule.
 
 ---
