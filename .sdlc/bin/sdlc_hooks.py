@@ -147,11 +147,12 @@ def active_change(root: Path, cfg: dict) -> Path | None:
     return d if d.is_dir() else None
 
 
-def plan_info(change: Path | None):
-    """Return (status, [file globs]) from plan.md, or (None, None) if absent."""
-    if not change or not (change / "plan.md").is_file():
-        return None, None
-    text = (change / "plan.md").read_text(errors="replace")
+def plan_info(change: Path | None, text: str | None = None):
+    """Return (status, [file globs]) from plan.md (or the given text), or (None, None) if absent."""
+    if text is None:
+        if not change or not (change / "plan.md").is_file():
+            return None, None
+        text = (change / "plan.md").read_text(errors="replace")
     status = frontmatter(text).get("status", "").lower()
     m = re.search(r"^##\s*Files that change\s*$(.*?)(?=^##\s|\Z)", text, re.M | re.S | re.I)
     files = []
@@ -314,17 +315,18 @@ def commit_checks(root, cfg, include_unstaged, deny_fn):
         deny_fn(f"staged changes contain what looks like a credential ({', '.join(hits)}). Remove it before committing.")
 
     change = active_change(root, cfg)
-    status, plan_files = plan_info(change)
-    if change and plan_files is not None:
-        cdir = f"{cfg['changes_dir']}/{change.name}/"
-        plan_rel = cdir + "plan.md"
-        if plan_rel not in staged:
+    if change:
+        plan_rel = f"{cfg['changes_dir']}/{change.name}/plan.md"
+        # Check against the plan as it will be committed: the staged (index) version if any.
+        staged_plan = git(root, "show", f":{plan_rel}") if not include_unstaged else ""
+        status, plan_files = plan_info(change, staged_plan or None)
+        if plan_files is not None:
             drift = [f for f in staged if not f.startswith(cfg["changes_dir"] + "/")
                      and not matches(f, plan_files) and not matches(f, cfg["plan_sync_ignore"])]
             if drift:
                 deny_fn("these files are not in plan.md 'Files that change': " + ", ".join(sorted(set(drift)))
-                        + f". Implementation departed from the plan: update {plan_rel} (files, order, risks) "
-                          "and stage it in the same commit.")
+                        + f". Implementation departed from the plan: add them to {plan_rel} (files, order, "
+                          "risks, Deviations) and stage it in the same commit.")
 
     if cfg.get("verify_gate"):
         # behaviour-changing files only: a tests-only commit (e.g. a reproducing failing test) is allowed
