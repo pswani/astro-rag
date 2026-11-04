@@ -1,0 +1,25 @@
+{
+  "changes_dir": "intent",
+  "source_of_truth": {
+    "intent": "repo",
+    "spec": "repo",
+    "plan": "repo",
+    "work_item": "repo",
+    "note": "Single-maintainer repo: markdown in git is authoritative. Baseline artifacts: intent/0001-*.md, docs/req/, docs/design/, docs/build/."
+  },
+  "source_globs": ["src/**", "scripts/**"],
+  "test_globs": ["tests/**"],
+  "protected_block": [],
+  "protected_ask": [".claude/settings.json", ".sdlc/config.json", ".sdlc/bin/**", ".github/workflows/**",
+                    "REVIEW.md", "profiles/calc/**", "pyproject.toml"],
+  "change_ticket_paths": [],
+  "plan_gate": "ask",
+  "plan_sync_ignore": ["CLAUDE.md", "AGENTS.md", "uv.lock", "docs/build/tasks.md"],
+  "verify_commands": ["make verify"],
+  "verify_gate": true,
+  "format_commands": [
+    { "glob": "**/*.py", "cmd": "command -v uv >/dev/null || exit 0; uv run --extra dev ruff check {file}" }
+  ],
+  "production_patterns": [],
+  "protected_branches": ["main"]
+}

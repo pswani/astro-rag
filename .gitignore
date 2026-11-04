@@ -6,3 +6,6 @@ __pycache__/
 .hypothesis/
 data/
 !data/.gitkeep
+
+# AI-native SDLC guardrail state (per worktree)
+.sdlc/state/
